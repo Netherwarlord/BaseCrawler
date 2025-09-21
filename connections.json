@@ -1,0 +1,11 @@
+[
+    {
+        "name": "IA-Backend",
+        "db_type": "PostgreSQL",
+        "host": "db.infernalaquatics.com",
+        "port": "5555",
+        "user": "IA-Frontend",
+        "password": "Database_Black_Magic_1a$",
+        "database": "infernal_aquatics_db"
+    }
+]

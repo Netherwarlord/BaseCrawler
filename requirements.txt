@@ -1,0 +1,5 @@
+CustomTkinter
+psycopg2-binary
+pymongo
+mysql-connector-python
+CTkMessagebox
