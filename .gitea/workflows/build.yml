@@ -79,9 +79,7 @@ jobs:
           token: ${{ secrets.RUNNER_TOKEN }}
 
       - name: Install Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+        run: choco install python --version 3.11 -y
 
       - name: Install dependencies
         run: pip install pyinstaller
