@@ -1,4 +1,4 @@
-name: Build & Package Python App
+name: Build for Windows, Mac, Linux
 
 on:
   push:
