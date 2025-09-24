@@ -67,7 +67,8 @@ jobs:
 
   build-windows:
     needs: set-version
-    runs-on: [Windows, X86_64]
+    runs-on: [Windows, X86_64, Docker]
+    container: mcr.microsoft.com/windows/servercore:ltsc2022
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
