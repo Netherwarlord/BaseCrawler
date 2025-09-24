@@ -35,8 +35,8 @@ jobs:
     steps:
       - name: Install Python & tools
         run: |
-          apt-get update
-          apt-get install -y python3 python3-pip ruby ruby-dev build-essential rpm nodejs
+          apt update
+          apt install -y python3 python3-pip ruby ruby-dev build-essential rpm nodejs
           pip3 install pyinstaller
           gem install --no-document fpm
       - uses: actions/checkout@v3
