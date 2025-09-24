@@ -33,18 +33,13 @@ jobs:
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.RUNNER_TOKEN }}
-
       - name: Install Python & tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3 python3-pip ruby ruby-dev build-essential rpm
+          sudo apt-get install -y python3 python3-pip ruby ruby-dev build-essential rpm nodejs
           pip3 install pyinstaller
           sudo gem install --no-document fpm
 
@@ -75,13 +70,11 @@ jobs:
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.RUNNER_TOKEN }}
+      - name: Install Node.js
+        run: choco install nodejs -y
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -118,17 +111,12 @@ jobs:
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.RUNNER_TOKEN }}
-
       - name: Install Python
         run: |
-          brew install python
+          brew install python node
           pip3 install pyinstaller
 
       - name: Build Mac binary
