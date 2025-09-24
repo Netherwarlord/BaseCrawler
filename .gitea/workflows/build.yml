@@ -70,7 +70,7 @@ jobs:
     runs-on: [Windows, x86_64, Docker]
     defaults:
       run:
-        shell: bash
+        shell: D:/Program Files/Git/bin/bash.exe
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
