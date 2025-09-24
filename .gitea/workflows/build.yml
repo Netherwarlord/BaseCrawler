@@ -65,7 +65,7 @@ jobs:
           name: linux-installers
           path: "*.deb,*.rpm"
 
-    build-windows:
+  build-windows:
     needs: set-version
     runs-on: [Windows, x86_64, Docker]
     outputs:
