@@ -33,6 +33,10 @@ jobs:
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.RUNNER_TOKEN }}
@@ -71,6 +75,10 @@ jobs:
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.RUNNER_TOKEN }}
@@ -110,6 +118,10 @@ jobs:
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.RUNNER_TOKEN }}
