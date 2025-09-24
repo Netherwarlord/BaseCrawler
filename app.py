@@ -1,7 +1,11 @@
 import customtkinter as ctk
 import tkinter as tk
+from tkinter import ttk
 import json
+import datetime
 from CTkMessagebox import CTkMessagebox
+import threading
+import queue
 
 from connection_manager import ConnectionManager
 from db_connector import get_connector
@@ -68,7 +72,9 @@ class NewConnectionWindow(ctk.CTkToplevel):
             "database": self.database_entry.get()
         }
         self.connection_manager.add_connection(connection_details)
-        self.master._load_connection_buttons() # Refresh the main app's connection list
+        CTkMessagebox(title="Success", message="Connection saved successfully.", icon="check", option_1="Ok")
+        self.master._load_connections_list() # Refresh the connections list in ManageConnectionsWindow
+        self.master.master._load_connection_buttons() # Refresh the main app's connection list
         self.destroy()
 
 
@@ -92,7 +98,7 @@ class ManageConnectionsWindow(ctk.CTkToplevel):
         self.control_frame.grid_columnconfigure((0,1,2,3), weight=1)
 
         ctk.CTkButton(self.control_frame, text="Add New", command=self._add_new_connection).grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-        ctk.CTkButton(self.control_frame, text="Remove Selected", command=self._remove_selected).grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        ctk.CTkButton(self.control_frame, text="Remove", command=self._remove_selected).grid(row=0, column=1, padx=5, pady=5, sticky="ew")
         ctk.CTkButton(self.control_frame, text="Move Up", command=self._move_up).grid(row=0, column=2, padx=5, pady=5, sticky="ew")
         ctk.CTkButton(self.control_frame, text="Move Down", command=self._move_down).grid(row=0, column=3, padx=5, pady=5, sticky="ew")
 
@@ -124,13 +130,15 @@ class ManageConnectionsWindow(ctk.CTkToplevel):
 
     def _remove_selected(self):
         if self.selected_connection_name:
-            if CTkMessagebox.askyesno("Confirm Removal", f"Are you sure you want to remove {self.selected_connection_name}?"):
+            msg = CTkMessagebox(title="Confirm Removal", message=f"Are you sure you want to remove {self.selected_connection_name}?",
+                                icon="question", option_1="No", option_2="Yes")
+            if msg.get() == "Yes":
                 self.connection_manager.remove_connection(self.selected_connection_name)
                 self.selected_connection_name = None
                 self._load_connections_list()
                 self.master._load_connection_buttons() # Refresh main app's list
         else:
-            CTkMessagebox.show_warning("Warning", "No connection selected to remove.")
+            CTkMessagebox(title="Warning", message="No connection selected to remove.", icon="warning", option_1="Ok")
 
     def _move_up(self):
         if self.selected_connection_name:
@@ -138,7 +146,7 @@ class ManageConnectionsWindow(ctk.CTkToplevel):
             self._load_connections_list()
             self.master._load_connection_buttons() # Refresh main app's list
         else:
-            CTkMessagebox.show_warning("Warning", "No connection selected to move.")
+            CTkMessagebox(title="Warning", message="No connection selected to move.", icon="warning", option_1="Ok")
 
     def _move_down(self):
         if self.selected_connection_name:
@@ -146,7 +154,7 @@ class ManageConnectionsWindow(ctk.CTkToplevel):
             self._load_connections_list()
             self.master._load_connection_buttons() # Refresh main app's list
         else:
-            CTkMessagebox.show_warning("Warning", "No connection selected to move.")
+            CTkMessagebox(title="Warning", message="No connection selected to move.", icon="warning", option_1="Ok")
 
 
 class AddEditDataWindow(ctk.CTkToplevel):
@@ -221,7 +229,7 @@ class AddEditDataWindow(ctk.CTkToplevel):
             self.master._load_data() # Refresh parent window's data
             self.destroy()
         else:
-            CTkMessagebox.showerror("Error", f"Failed to save data: {message}") # Corrected call
+            CTkMessagebox(title="Error", message=f"Failed to save data: {message}", icon="cancel", option_1="Ok")
 
 
 class DataEditorWindow(ctk.CTkToplevel):
@@ -254,82 +262,106 @@ class DataEditorWindow(ctk.CTkToplevel):
         self.data_display_frame.grid_rowconfigure(0, weight=1)
         self.data_display_frame.grid_columnconfigure(0, weight=1)
 
-        self.data_textbox = ctk.CTkTextbox(self.data_display_frame, wrap="none")
-        self.data_textbox.grid(row=0, column=0, sticky="nsew")
-        self.data_textbox.configure(state="disabled")
+        self.tree = ttk.Treeview(self.data_display_frame)
+        self.tree.grid(row=0, column=0, sticky="nsew")
+
+        # Add scrollbars
+        vsb = ttk.Scrollbar(self.data_display_frame, orient="vertical", command=self.tree.yview)
+        vsb.grid(row=0, column=1, sticky='ns')
+        hsb = ttk.Scrollbar(self.data_display_frame, orient="horizontal", command=self.tree.xview)
+        hsb.grid(row=1, column=0, sticky='ew')
+        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
         self._load_data()
 
     def _load_data(self):
-        self.data_textbox.configure(state="normal")
-        self.data_textbox.delete("1.0", "end")
-        self.data_textbox.insert("end", "Loading data for " + self.item_name + "...\n") # Modified line
-        self.data_textbox.configure(state="disabled")
+        # Clear previous data
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+        self.tree["columns"] = []
+        self.tree["show"] = "headings"
 
         success, result = self.active_connector.fetch_data(self.item_name)
-
-        self.data_textbox.configure(state="normal")
-        self.data_textbox.delete("1.0", "end")
 
         if success:
             if result and result["rows"]:
                 self.data_columns = result["columns"]
                 self.data_rows = result["rows"]
-                
-                header = " | ".join(self.data_columns)
-                self.data_textbox.insert("end", header + "\n")
-                self.data_textbox.insert("end", "-" * len(header) + "\n")
+
+                self.tree["columns"] = self.data_columns
+                for col in self.data_columns:
+                    self.tree.heading(col, text=col)
+                    self.tree.column(col, width=100) # default width
+
                 for row in self.data_rows:
-                    self.data_textbox.insert("end", " | ".join(map(str, row)) + "\n")
+                    self.tree.insert("", "end", values=row)
             else:
+                # handle no data
                 self.data_columns = []
                 self.data_rows = []
-                self.data_textbox.insert("end", f"No data found for {self.item_name}.\n")
         else:
+            # handle error
             self.data_columns = []
             self.data_rows = []
-            self.data_textbox.insert("end", f"Error fetching data for {self.item_name}: {result}\n")
-        self.data_textbox.configure(state="disabled")
 
     def _add_data(self):
         if not self.data_columns:
-            CTkMessagebox.show_warning("Warning", "Cannot add data: No schema/columns found. Fetch data first.") # Corrected call
+            CTkMessagebox(title="Warning", message="Cannot add data: No schema/columns found. Fetch data first.", icon="warning", option_1="Ok")
             return
         AddEditDataWindow(self, self.active_connector, self.item_name, self.is_collection, self.data_columns, mode="add")
 
     def _edit_data(self):
-        if not self.data_rows:
-            CTkMessagebox.show_warning("Warning", "No data to edit. Fetch data first.") # Corrected call
+        selected_item = self.tree.focus()
+        if not selected_item:
+            CTkMessagebox(title="Warning", message="No row selected to edit.", icon="warning", option_1="Ok")
             return
+
+        selected_row_values = self.tree.item(selected_item)['values']
+        selected_row_data = dict(zip(self.data_columns, selected_row_values))
         
-        # For simplicity, edit the first row. A proper implementation would allow selection.
-        selected_row_data = dict(zip(self.data_columns, self.data_rows[0]))
+        # For MongoDB, we need the ObjectId, not the string representation
+        if self.is_collection and '_id' in selected_row_data:
+            # Find the original document to get the ObjectId
+            for row in self.data_rows:
+                if str(row[self.data_columns.index('_id')]) == selected_row_data['_id']:
+                    selected_row_data['_id'] = row[self.data_columns.index('_id')]
+                    break
+        
         AddEditDataWindow(self, self.active_connector, self.item_name, self.is_collection, self.data_columns, initial_data=selected_row_data, mode="edit")
 
     def _delete_data(self):
-        if not self.data_rows:
-            CTkMessagebox.show_warning("Warning", "No data to delete. Fetch data first.") # Corrected call
+        selected_item = self.tree.focus()
+        if not selected_item:
+            CTkMessagebox(title="Warning", message="No row selected to delete.", icon="warning", option_1="Ok")
             return
+
+        selected_row_values = self.tree.item(selected_item)['values']
         
-        # For simplicity, delete the first row. A proper implementation would allow selection.
-        # Need to construct a condition for deletion
         condition = {}
         if self.is_collection:
             # MongoDB uses _id for unique identification
-            condition["_id"] = self.data_rows[0][self.data_columns.index("_id")]
+            _id_index = self.data_columns.index("_id")
+            _id_str = selected_row_values[_id_index]
+            # Find the original document to get the ObjectId
+            for row in self.data_rows:
+                if str(row[_id_index]) == _id_str:
+                    condition["_id"] = row[_id_index]
+                    break
         else:
             # For SQL, assume the first column is the primary key for deletion condition
             pk_col = self.data_columns[0]
-            condition[pk_col] = self.data_rows[0][0]
+            pk_val = selected_row_values[0]
+            condition[pk_col] = pk_val
 
-        # Confirm deletion
-        if CTkMessagebox.askyesno("Confirm Delete", f"Are you sure you want to delete the first row from {self.item_name}?"):
+        msg = CTkMessagebox(title="Confirm Delete", message=f"Are you sure you want to delete the selected row from {self.item_name}?",
+                            icon="question", option_1="No", option_2="Yes")
+        if msg.get() == "Yes":
             success, message = self.active_connector.delete_data(self.item_name, condition)
             if success:
-                CTkMessagebox.showinfo("Success", message) # Corrected call
+                CTkMessagebox(title="Success", message=message, icon="check", option_1="Ok")
                 self._load_data() # Refresh data after deletion
             else:
-                CTkMessagebox.showerror("Error", f"Failed to delete data: {message}") # Corrected call
+                CTkMessagebox(title="Error", message=f"Failed to delete data: {message}", icon="cancel", option_1="Ok")
 
 
 class DBManagerApp(ctk.CTk):
@@ -342,6 +374,12 @@ class DBManagerApp(ctk.CTk):
         self.connection_manager = ConnectionManager()
         self.active_connector = None
         self.selected_connection_details = None # Store details of the currently selected connection
+
+        self.status_label = None
+        self.status_check_id = None
+        self.status_queue = queue.Queue()
+        self.default_status_color = None
+        self.last_connection_status = None
 
         # Configure grid layout (2x1)
         self.grid_rowconfigure(0, weight=1)
@@ -392,10 +430,18 @@ class DBManagerApp(ctk.CTk):
 
         # Schema Tab
         self.schema_tab = self.workspace_tabview.add("Schema")
-        self.schema_tab.grid_rowconfigure(0, weight=1)
+        self.schema_tab.grid_rowconfigure(1, weight=1)
         self.schema_tab.grid_columnconfigure(0, weight=1)
+
+        self.schema_controls_frame = ctk.CTkFrame(self.schema_tab)
+        self.schema_controls_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=0)
+        self.schema_controls_frame.grid_columnconfigure(0, weight=1)
+
+        self.refresh_schema_button = ctk.CTkButton(self.schema_controls_frame, text="Refresh Schema", command=self._refresh_schema)
+        self.refresh_schema_button.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
+
         self.schema_display_frame = ctk.CTkScrollableFrame(self.schema_tab, label_text="Database Schema")
-        self.schema_display_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.schema_display_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
         self.schema_display_frame.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(self.schema_display_frame, text="Connect to a database to view its schema.").grid(row=0, column=0, padx=5, pady=5)
 
@@ -449,6 +495,7 @@ class DBManagerApp(ctk.CTk):
             self.active_connector = None
 
         self.selected_connection_details = connection_details
+        self.last_connection_status = None # Reset status
 
         # Hide workspace tabview, show connection info frame
         self.workspace_tabview.grid_remove()
@@ -461,13 +508,23 @@ class DBManagerApp(ctk.CTk):
         # Display connection details
         self._display_selected_connection_info_labels(connection_details)
 
+        # Start status check loop
+        if self.status_label:
+            self.status_label.configure(text="Checking...", text_color=self.default_status_color)
+        self._schedule_status_check()
+
         # Show connect button
-        self.connect_button.grid(row=100, column=0, padx=20, pady=20, sticky="s") # Corrected: grid() to show the button
+        self.connect_button.grid(row=100, column=0, padx=20, pady=20, sticky="s")
 
     def _connect_selected_db(self):
         if not self.selected_connection_details:
-            CTkMessagebox.show_warning("Warning", "No connection selected to connect.")
+            CTkMessagebox(title="Warning", message="No connection selected to connect.", icon="warning", option_1="Ok")
             return
+        
+        # Cancel status check loop
+        if self.status_check_id:
+            self.after_cancel(self.status_check_id)
+            self.status_check_id = None
         
         connection_details = self.selected_connection_details
 
@@ -490,7 +547,6 @@ class DBManagerApp(ctk.CTk):
                 ctk.CTkLabel(self.schema_display_frame, text=f"Successfully connected to {connection_details['name']}!\n\nFetching schema...\n").grid(row=0, column=0, padx=5, pady=5)
                 
                 schema = self.active_connector.fetch_schema()
-                print(f"Schema received in _connect_to_db: {schema}") # Debug print
                 if schema:
                     self._display_schema(schema, connection_details["db_type"])
                 else:
@@ -538,8 +594,15 @@ class DBManagerApp(ctk.CTk):
         row_idx += 1
         ctk.CTkLabel(self.connection_details_display_frame, text=f"Database: {connection_details.get('database')}").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w")
         row_idx += 1
-        ctk.CTkLabel(self.connection_details_display_frame, text=f"Online Status: Checking...").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w") # Placeholder
+        
+        status_frame = ctk.CTkFrame(self.connection_details_display_frame, fg_color="transparent")
+        status_frame.grid(row=row_idx, column=0, padx=20, pady=2, sticky="w")
+        ctk.CTkLabel(status_frame, text="Online Status: ").pack(side="left")
+        self.status_label = ctk.CTkLabel(status_frame, text="Checking...")
+        self.status_label.pack(side="left")
+        self.default_status_color = self.status_label.cget("text_color")
         row_idx += 1
+
         ctk.CTkLabel(self.connection_details_display_frame, text=f"Size: N/A").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w") # Placeholder
         row_idx += 1
         ctk.CTkLabel(self.connection_details_display_frame, text=f"Last Connected: N/A").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w") # Placeholder
@@ -547,8 +610,66 @@ class DBManagerApp(ctk.CTk):
         ctk.CTkLabel(self.connection_details_display_frame, text=f"First Connected: N/A").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w") # Placeholder
         row_idx += 1
 
+    def _schedule_status_check(self):
+        if self.status_check_id:
+            self.after_cancel(self.status_check_id)
+
+        def check_worker():
+            if self.selected_connection_details:
+                try:
+                    connector = get_connector(self.selected_connection_details)
+                    if connector.connect(silent=True):
+                        self.status_queue.put("Online")
+                        connector.disconnect(silent=True)
+                    else:
+                        self.status_queue.put("Offline")
+                except Exception:
+                    self.status_queue.put("Error")
+        
+        threading.Thread(target=check_worker, daemon=True).start()
+        self._process_status_queue()
+
+    def _process_status_queue(self):
+        try:
+            status = self.status_queue.get_nowait()
+            if status != self.last_connection_status:
+                self.last_connection_status = status
+                if self.status_label:
+                    if status == "Online":
+                        self.status_label.configure(text="Online", text_color="green")
+                    elif status == "Offline":
+                        self.status_label.configure(text="Offline", text_color="red")
+                    else: # Error
+                        self.status_label.configure(text="Error", text_color="orange")
+            
+            self.status_check_id = self.after(1000, self._schedule_status_check)
+
+        except queue.Empty:
+            self.status_check_id = self.after(100, self._process_status_queue)
+
+    def _refresh_schema(self):
+        if not self.active_connector:
+            CTkMessagebox(title="Warning", message="Not connected to any database.", icon="warning", option_1="Ok")
+            return
+
+        if not self.selected_connection_details:
+            CTkMessagebox(title="Warning", message="No connection details found.", icon="warning", option_1="Ok")
+            return
+
+        # Clear schema display
+        for widget in self.schema_display_frame.winfo_children():
+            widget.destroy()
+        ctk.CTkLabel(self.schema_display_frame, text="Refreshing schema...").grid(row=0, column=0, padx=5, pady=5)
+
+        schema = self.active_connector.fetch_schema()
+        if schema:
+            self._display_schema(schema, self.selected_connection_details["db_type"])
+        else:
+            for widget in self.schema_display_frame.winfo_children():
+                widget.destroy()
+            ctk.CTkLabel(self.schema_display_frame, text="Failed to fetch schema.").grid(row=0, column=0, padx=5, pady=5)
+
     def _display_schema(self, schema, db_type):
-        print(f"_display_schema received schema: {schema}, db_type: {db_type}") # Debug print
         for widget in self.schema_display_frame.winfo_children():
             widget.destroy()
         
@@ -574,7 +695,7 @@ class DBManagerApp(ctk.CTk):
         if self.active_connector:
             DataEditorWindow(self, self.active_connector, item_name, is_collection)
         else:
-            CTkMessagebox.showerror("Error", "No active connection to open data editor.") # Corrected call
+            CTkMessagebox(title="Error", message="No active connection to open data editor.", icon="cancel", option_1="Ok")
 
     def _execute_query(self):
         if not self.active_connector:
@@ -617,6 +738,11 @@ class DBManagerApp(ctk.CTk):
                 self.query_results.insert("end", result["message"] + "\n")
             else:
                 self.query_results.insert("end", str(result) + "\n")
+
+            # Automatically refresh schema if the query might have changed it.
+            query_upper = query.upper()
+            if any(keyword in query_upper for keyword in ["CREATE", "ALTER", "DROP", "RENAME", "TRUNCATE"]):
+                self._refresh_schema()
         else:
             self.query_results.insert("end", f"Error: {result}\n")
         self.query_results.configure(state="disabled")

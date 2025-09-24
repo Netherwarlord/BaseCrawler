@@ -3,6 +3,7 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId # Added for MongoDB
 import mysql.connector
 import sqlite3
+import datetime
 
 class DBConnector:
     def __init__(self, connection_details):
@@ -10,17 +11,18 @@ class DBConnector:
         self.connection = None
         self.cursor = None # For SQL databases
 
-    def connect(self):
+    def connect(self, silent=False):
         raise NotImplementedError
 
-    def disconnect(self):
+    def disconnect(self, silent=False):
         if self.connection:
             if self.cursor:
                 self.cursor.close()
             self.connection.close()
             self.connection = None
             self.cursor = None
-            print(f"Disconnected from {self.connection_details.get('name')}")
+            if not silent:
+                print(f"Disconnected from {self.connection_details.get('name')}")
 
     def execute_query(self, query):
         raise NotImplementedError
@@ -41,7 +43,7 @@ class DBConnector:
         raise NotImplementedError
 
 class PostgreSQLConnector(DBConnector):
-    def connect(self):
+    def connect(self, silent=False):
         try:
             self.connection = psycopg2.connect(
                 host=self.connection_details.get("host"),
@@ -51,10 +53,12 @@ class PostgreSQLConnector(DBConnector):
                 database=self.connection_details.get("database")
             )
             self.cursor = self.connection.cursor()
-            print(f"Connected to PostgreSQL: {self.connection_details.get('name')}")
+            if not silent:
+                print(f"Connected to PostgreSQL: {self.connection_details.get('name')}")
             return True
         except Exception as e:
-            print(f"PostgreSQL connection error: {e}")
+            if not silent:
+                print(f"PostgreSQL connection error: {e}")
             return False
 
     def fetch_schema(self):
@@ -71,7 +75,6 @@ class PostgreSQLConnector(DBConnector):
                 self.cursor.execute(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table}';")
                 columns = [{"name": col[0], "type": col[1]} for col in self.cursor.fetchall()]
                 schema["tables"][table] = {"columns": columns}
-            print(f"PostgreSQL fetch_schema returning: {schema}") # Debug print
             return schema
         except Exception as e:
             print(f"Error fetching PostgreSQL schema: {e}")
@@ -113,6 +116,7 @@ class PostgreSQLConnector(DBConnector):
             query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"
             self.cursor.execute(query, list(data.values()))
             self.connection.commit()
+            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Inserted 1 row into {table_name}."
         except Exception as e:
             self.connection.rollback()
@@ -133,6 +137,7 @@ class PostgreSQLConnector(DBConnector):
             params = list(data.values()) + list(condition.values())
             self.cursor.execute(query, params)
             self.connection.commit()
+            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Updated {self.cursor.rowcount} rows in {table_name}."
         except Exception as e:
             self.connection.rollback()
@@ -150,6 +155,7 @@ class PostgreSQLConnector(DBConnector):
             params = list(condition.values())
             self.cursor.execute(query, params)
             self.connection.commit()
+            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Deleted {self.cursor.rowcount} rows from {table_name}."
         except Exception as e:
             self.connection.rollback()
@@ -157,7 +163,7 @@ class PostgreSQLConnector(DBConnector):
 
 
 class MongoDBConnector(DBConnector):
-    def connect(self):
+    def connect(self, silent=False):
         try:
             # MongoDB connection string can be complex, simplifying for now
             # For production, consider more robust URI construction and authentication
@@ -172,22 +178,25 @@ class MongoDBConnector(DBConnector):
             else:
                 uri = f"mongodb://{host}:{port}/"
 
-            self.connection = MongoClient(uri)
+            self.connection = MongoClient(uri, serverSelectionTimeoutMS=5000)
             self.db = self.connection[database] # Select the database
             # The ping command is cheap and does not require auth.
             self.connection.admin.command('ping') 
-            print(f"Connected to MongoDB: {self.connection_details.get('name')}")
+            if not silent:
+                print(f"Connected to MongoDB: {self.connection_details.get('name')}")
             return True
         except Exception as e:
-            print(f"MongoDB connection error: {e}")
+            if not silent:
+                print(f"MongoDB connection error: {e}")
             return False
 
-    def disconnect(self):
+    def disconnect(self, silent=False):
         if self.connection:
             self.connection.close()
             self.connection = None
             self.db = None
-            print(f"Disconnected from {self.connection_details.get('name')}")
+            if not silent:
+                print(f"Disconnected from {self.connection_details.get('name')}")
 
     def fetch_schema(self):
         if not self.db:
@@ -200,7 +209,6 @@ class MongoDBConnector(DBConnector):
                 # For simplicity, we'll just list collection names for now.
                 # A more advanced implementation would sample documents to infer schema.
                 schema["collections"][col_name] = {"fields": "dynamic (sample to infer)"}
-            print(f"MongoDB fetch_schema returning: {schema}") # Debug print
             return schema
         except Exception as e:
             print(f"Error fetching MongoDB schema: {e}")
@@ -282,6 +290,7 @@ class MongoDBConnector(DBConnector):
             return False, "Not connected."
         try:
             result = self.db[collection_name].insert_one(data)
+            print(f"Collection '{collection_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Inserted document with ID: {result.inserted_id}"
         except Exception as e:
             return False, str(e)
@@ -291,6 +300,7 @@ class MongoDBConnector(DBConnector):
             return False, "Not connected."
         try:
             result = self.db[collection_name].update_many(query_filter, {"$set": update_data})
+            print(f"Collection '{collection_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Matched {result.matched_count} documents, modified {result.modified_count}."
         except Exception as e:
             return False, str(e)
@@ -300,13 +310,14 @@ class MongoDBConnector(DBConnector):
             return False, "Not connected."
         try:
             result = self.db[collection_name].delete_many(query_filter)
+            print(f"Collection '{collection_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Deleted {result.deleted_count} documents."
         except Exception as e:
             return False, str(e)
 
 
 class MySQLMariaDBConnector(DBConnector):
-    def connect(self):
+    def connect(self, silent=False):
         try:
             self.connection = mysql.connector.connect(
                 host=self.connection_details.get("host"),
@@ -316,10 +327,12 @@ class MySQLMariaDBConnector(DBConnector):
                 database=self.connection_details.get("database")
             )
             self.cursor = self.connection.cursor()
-            print(f"Connected to MySQL/MariaDB: {self.connection_details.get('name')}")
+            if not silent:
+                print(f"Connected to MySQL/MariaDB: {self.connection_details.get('name')}")
             return True
         except Exception as e:
-            print(f"MySQL/MariaDB connection error: {e}")
+            if not silent:
+                print(f"MySQL/MariaDB connection error: {e}")
             return False
 
     def fetch_schema(self):
@@ -333,7 +346,6 @@ class MySQLMariaDBConnector(DBConnector):
                 self.cursor.execute(f"DESCRIBE {table};")
                 columns = [{"name": col[0], "type": col[1]} for col in self.cursor.fetchall()]
                 schema["tables"][table] = {"columns": columns}
-            print(f"MySQL/MariaDB fetch_schema returning: {schema}") # Debug print
             return schema
         except Exception as e:
             print(f"Error fetching MySQL/MariaDB schema: {e}")
@@ -375,6 +387,7 @@ class MySQLMariaDBConnector(DBConnector):
             query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"
             self.cursor.execute(query, list(data.values()))
             self.connection.commit()
+            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Inserted 1 row into {table_name}."
         except Exception as e:
             self.connection.rollback()
@@ -394,6 +407,7 @@ class MySQLMariaDBConnector(DBConnector):
             params = list(data.values()) + list(condition.values())
             self.cursor.execute(query, params)
             self.connection.commit()
+            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Updated {self.cursor.rowcount} rows in {table_name}."
         except Exception as e:
             self.connection.rollback()
@@ -410,6 +424,7 @@ class MySQLMariaDBConnector(DBConnector):
             params = list(condition.values())
             self.cursor.execute(query, params)
             self.connection.commit()
+            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Deleted {self.cursor.rowcount} rows from {table_name}."
         except Exception as e:
             self.connection.rollback()
@@ -417,7 +432,7 @@ class MySQLMariaDBConnector(DBConnector):
 
 
 class SQLiteConnector(DBConnector):
-    def connect(self):
+    def connect(self, silent=False):
         try:
             # For SQLite, host is the path to the database file, or just the database name
             db_path = self.connection_details.get("database")
@@ -425,10 +440,12 @@ class SQLiteConnector(DBConnector):
                 raise ValueError("SQLite database path cannot be empty.")
             self.connection = sqlite3.connect(db_path)
             self.cursor = self.connection.cursor()
-            print(f"Connected to SQLite: {self.connection_details.get('name')}")
+            if not silent:
+                print(f"Connected to SQLite: {self.connection_details.get('name')}")
             return True
         except Exception as e:
-            print(f"SQLite connection error: {e}")
+            if not silent:
+                print(f"SQLite connection error: {e}")
             return False
 
     def fetch_schema(self):
@@ -442,7 +459,6 @@ class SQLiteConnector(DBConnector):
                 self.cursor.execute(f"PRAGMA table_info({table});")
                 columns = [{"name": col[1], "type": col[2]} for col in self.cursor.fetchall()]
                 schema["tables"][table] = {"columns": columns}
-            print(f"SQLite fetch_schema returning: {schema}") # Debug print
             return schema
         except Exception as e:
             print(f"Error fetching SQLite schema: {e}")
@@ -484,6 +500,7 @@ class SQLiteConnector(DBConnector):
             query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"
             self.cursor.execute(query, list(data.values()))
             self.connection.commit()
+            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Inserted 1 row into {table_name}."
         except Exception as e:
             self.connection.rollback()
@@ -503,6 +520,7 @@ class SQLiteConnector(DBConnector):
             params = list(data.values()) + list(condition.values())
             self.cursor.execute(query, params)
             self.connection.commit()
+            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Updated {self.cursor.rowcount} rows in {table_name}."
         except Exception as e:
             self.connection.rollback()
@@ -519,6 +537,7 @@ class SQLiteConnector(DBConnector):
             params = list(condition.values())
             self.cursor.execute(query, params)
             self.connection.commit()
+            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Deleted {self.cursor.rowcount} rows from {table_name}."
         except Exception as e:
             self.connection.rollback()
