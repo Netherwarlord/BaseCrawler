@@ -67,7 +67,7 @@ jobs:
 
   build-windows:
     needs: set-version
-    runs-on: [Windows, x86_64]
+    runs-on: [Windows, X86_64]
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
