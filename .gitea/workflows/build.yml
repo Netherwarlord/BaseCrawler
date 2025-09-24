@@ -70,12 +70,10 @@ jobs:
     runs-on: [Windows, x86_64, Docker]
     defaults:
       run:
-        shell: D:/Program Files/Git/bin/bash.exe
+        shell: bash
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
-      - name: Add Git to PATH
-        run: echo "D:/Program Files/Git/bin" >> $GITHUB_PATH
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.RUNNER_TOKEN }}
