@@ -35,10 +35,10 @@ jobs:
     steps:
       - name: Install Python & tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3 python3-pip ruby ruby-dev build-essential rpm nodejs
+          apt-get update
+          apt-get install -y python3 python3-pip ruby ruby-dev build-essential rpm nodejs
           pip3 install pyinstaller
-          sudo gem install --no-document fpm
+          gem install --no-document fpm
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.RUNNER_TOKEN }}
