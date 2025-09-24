@@ -68,6 +68,9 @@ jobs:
   build-windows:
     needs: set-version
     runs-on: [Windows, x86_64, Docker]
+    defaults:
+      run:
+        shell: bash
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
