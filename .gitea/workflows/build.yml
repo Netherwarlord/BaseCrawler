@@ -74,8 +74,6 @@ jobs:
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
-      - name: Install Node.js
-        run: choco install nodejs -y
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.RUNNER_TOKEN }}
