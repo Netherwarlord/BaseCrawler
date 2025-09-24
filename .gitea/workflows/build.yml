@@ -33,15 +33,15 @@ jobs:
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.RUNNER_TOKEN }}
       - name: Install Python & tools
         run: |
           sudo apt-get update
           sudo apt-get install -y python3 python3-pip ruby ruby-dev build-essential rpm nodejs
           pip3 install pyinstaller
           sudo gem install --no-document fpm
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.RUNNER_TOKEN }}
 
       - name: Build Linux binary
         run: pyinstaller --onefile app.py --name myapp
@@ -70,11 +70,11 @@ jobs:
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
+      - name: Install Node.js
+        run: choco install nodejs -y
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.RUNNER_TOKEN }}
-      - name: Install Node.js
-        run: choco install nodejs -y
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -111,13 +111,13 @@ jobs:
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.RUNNER_TOKEN }}
       - name: Install Python
         run: |
           brew install python node
           pip3 install pyinstaller
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.RUNNER_TOKEN }}
 
       - name: Build Mac binary
         run: pyinstaller --onefile app.py --name myapp
