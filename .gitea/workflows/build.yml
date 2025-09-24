@@ -65,10 +65,9 @@ jobs:
           name: linux-installers
           path: "*.deb,*.rpm"
 
-  build-windows:
+    build-windows:
     needs: set-version
     runs-on: [Windows, x86_64, Docker]
-    container: mcr.microsoft.com/windows/servercore:ltsc2022
     outputs:
       artifacts: ${{ steps.artifacts.outputs.files }}
     steps:
@@ -106,6 +105,7 @@ jobs:
         with:
           name: windows-installer
           path: myapp-*.msi
+
 
   build-macos:
     needs: set-version
