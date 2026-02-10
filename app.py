@@ -13,6 +13,9 @@ from db_connector import get_connector
 class NewConnectionWindow(ctk.CTkToplevel):
     def __init__(self, master, connection_manager):
         super().__init__(master)
+        self.lift()
+        self.focus_force()
+        self.grab_set()
         self.title("New Connection")
         self.geometry("400x550")
         self.connection_manager = connection_manager
@@ -28,7 +31,7 @@ class NewConnectionWindow(ctk.CTkToplevel):
         # DB Type
         ctk.CTkLabel(self, text="Database Type:").grid(row=1, column=0, padx=10, pady=5, sticky="w")
         self.db_type_var = ctk.StringVar(value="PostgreSQL")
-        self.db_type_optionmenu = ctk.CTkOptionMenu(self, values=["PostgreSQL", "MongoDB", "MariaDB", "MySQL", "SQLite"], 
+        self.db_type_optionmenu = ctk.CTkOptionMenu(self, values=["PostgreSQL", "MongoDB", "MariaDB", "MySQL"], 
                                                     variable=self.db_type_var)
         self.db_type_optionmenu.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
 
@@ -81,6 +84,9 @@ class NewConnectionWindow(ctk.CTkToplevel):
 class ManageConnectionsWindow(ctk.CTkToplevel):
     def __init__(self, master, connection_manager):
         super().__init__(master)
+        self.lift()
+        self.focus_force()
+        self.grab_set()
         self.title("Manage Connections")
         self.geometry("500x600")
         self.connection_manager = connection_manager
@@ -160,6 +166,9 @@ class ManageConnectionsWindow(ctk.CTkToplevel):
 class AddEditDataWindow(ctk.CTkToplevel):
     def __init__(self, master, active_connector, item_name, is_collection, columns, initial_data=None, mode="add"):
         super().__init__(master)
+        self.lift()
+        self.focus_force()
+        self.grab_set()
         self.title(f"{mode.capitalize()} Data: {item_name}")
         self.geometry("500x" + str(100 + len(columns) * 40))
         self.active_connector = active_connector
@@ -235,6 +244,9 @@ class AddEditDataWindow(ctk.CTkToplevel):
 class DataEditorWindow(ctk.CTkToplevel):
     def __init__(self, master, active_connector, item_name, is_collection):
         super().__init__(master)
+        self.lift()
+        self.focus_force()
+        self.grab_set()
         self.title(f"Data Editor: {item_name}")
         self.geometry("1200x700")
         self.active_connector = active_connector

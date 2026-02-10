@@ -2,7 +2,6 @@ import psycopg2
 from pymongo import MongoClient
 from bson.objectid import ObjectId # Added for MongoDB
 import mysql.connector
-import sqlite3
 import datetime
 
 class DBConnector:
@@ -431,119 +430,6 @@ class MySQLMariaDBConnector(DBConnector):
             return False, str(e)
 
 
-class SQLiteConnector(DBConnector):
-    def connect(self, silent=False):
-        try:
-            # For SQLite, host is the path to the database file, or just the database name
-            db_path = self.connection_details.get("database")
-            if not db_path:
-                raise ValueError("SQLite database path cannot be empty.")
-            self.connection = sqlite3.connect(db_path)
-            self.cursor = self.connection.cursor()
-            if not silent:
-                print(f"Connected to SQLite: {self.connection_details.get('name')}")
-            return True
-        except Exception as e:
-            if not silent:
-                print(f"SQLite connection error: {e}")
-            return False
-
-    def fetch_schema(self):
-        if not self.connection:
-            return None
-        try:
-            self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            tables = [row[0] for row in self.cursor.fetchall()]
-            schema = {"tables": {}}
-            for table in tables:
-                self.cursor.execute(f"PRAGMA table_info({table});")
-                columns = [{"name": col[1], "type": col[2]} for col in self.cursor.fetchall()]
-                schema["tables"][table] = {"columns": columns}
-            return schema
-        except Exception as e:
-            print(f"Error fetching SQLite schema: {e}")
-            return None
-
-    def execute_query(self, query):
-        if not self.connection:
-            return False, "Not connected to database."
-        try:
-            self.cursor.execute(query)
-            if self.cursor.description: # It's a SELECT query
-                columns = [desc[0] for desc in self.cursor.description]
-                results = self.cursor.fetchall()
-                return True, {"columns": columns, "rows": results}
-            else: # It's an INSERT, UPDATE, DELETE, or DDL query
-                self.connection.commit()
-                return True, {"message": f"Query executed successfully. Rows affected: {self.cursor.rowcount}"}
-        except Exception as e:
-            self.connection.rollback() # Rollback on error for transactional databases
-            return False, str(e)
-
-    def fetch_data(self, table_name):
-        if not self.connection:
-            return False, "Not connected."
-        try:
-            self.cursor.execute(f"SELECT * FROM {table_name};")
-            columns = [desc[0] for desc in self.cursor.description]
-            rows = self.cursor.fetchall()
-            return True, {"columns": columns, "rows": rows}
-        except Exception as e:
-            return False, str(e)
-
-    def insert_data(self, table_name, data):
-        if not self.connection:
-            return False, "Not connected."
-        try:
-            columns = ', '.join(data.keys())
-            placeholders = ', '.join(['?'] * len(data))
-            query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"
-            self.cursor.execute(query, list(data.values()))
-            self.connection.commit()
-            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
-            return True, f"Inserted 1 row into {table_name}."
-        except Exception as e:
-            self.connection.rollback()
-            return False, str(e)
-
-    def update_data(self, table_name, data, condition):
-        if not self.connection:
-            return False, "Not connected."
-        try:
-            set_clauses = [f"{col} = ?" for col in data.keys()]
-            set_clause_str = ', '.join(set_clauses)
-            
-            where_clauses = [f"{col} = ?" for col in condition.keys()]
-            where_clause_str = ' AND '.join(where_clauses)
-
-            query = f"UPDATE {table_name} SET {set_clause_str} WHERE {where_clause_str};"
-            params = list(data.values()) + list(condition.values())
-            self.cursor.execute(query, params)
-            self.connection.commit()
-            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
-            return True, f"Updated {self.cursor.rowcount} rows in {table_name}."
-        except Exception as e:
-            self.connection.rollback()
-            return False, str(e)
-
-    def delete_data(self, table_name, condition):
-        if not self.connection:
-            return False, "Not connected."
-        try:
-            where_clauses = [f"{col} = ?" for col in condition.keys()]
-            where_clause_str = ' AND '.join(where_clauses)
-
-            query = f"DELETE FROM {table_name} WHERE {where_clause_str};"
-            params = list(condition.values())
-            self.cursor.execute(query, params)
-            self.connection.commit()
-            print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
-            return True, f"Deleted {self.cursor.rowcount} rows from {table_name}."
-        except Exception as e:
-            self.connection.rollback()
-            return False, str(e)
-
-
 def get_connector(connection_details):
     db_type = connection_details.get("db_type")
     if db_type == "PostgreSQL":
@@ -552,7 +438,5 @@ def get_connector(connection_details):
         return MongoDBConnector(connection_details)
     elif db_type == "MariaDB" or db_type == "MySQL": # MariaDB uses MySQL connector
         return MySQLMariaDBConnector(connection_details)
-    elif db_type == "SQLite":
-        return SQLiteConnector(connection_details)
     else:
         raise ValueError(f"Unsupported database type: {db_type}")
