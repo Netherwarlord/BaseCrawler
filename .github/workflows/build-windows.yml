@@ -53,9 +53,10 @@ jobs:
       - name: Create Inno Setup script
         shell: bash
         run: |
-          cat > installer.iss << 'EOF'
+          VERSION="${{ steps.get_version.outputs.version }}"
+          cat > installer.iss << EOF
           #define MyAppName "BaseCrawler"
-          #define MyAppVersion "${{ steps.get_version.outputs.version }}"
+          #define MyAppVersion "$VERSION"
           #define MyAppPublisher "Netherwarlord"
           #define MyAppURL "https://github.com/Netherwarlord/BaseCrawler"
           #define MyAppExeName "BaseCrawler.exe"
