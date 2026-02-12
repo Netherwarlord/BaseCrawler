@@ -2,3 +2,15 @@ connections.json
 __pycache__
 .DS_Store
 /Testing-DBs
+
+# Build artifacts
+build/
+dist/
+*.spec
+*.exe
+*.msi
+*.iss
+
+# PyInstaller
+*.pyc
+*.pyo
