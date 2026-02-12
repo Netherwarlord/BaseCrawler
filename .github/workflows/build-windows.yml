@@ -35,7 +35,7 @@ jobs:
         id: get_version
         shell: bash
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+          if [[ "${GITHUB_REF}" == "refs/tags/"* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
             IS_RELEASE=true
           else
