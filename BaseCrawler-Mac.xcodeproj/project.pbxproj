@@ -1,0 +1,455 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		9D5FE7162F46557F00C3FB9C /* PostgresNIO in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5FE7152F46557F00C3FB9C /* PostgresNIO */; };
+		9D5FE7182F46557F00C3FB9C /* _ConnectionPoolModule in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5FE7172F46557F00C3FB9C /* _ConnectionPoolModule */; };
+		9D5FE71A2F46557F00C3FB9C /* _ConnectionPoolTestUtils in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5FE7192F46557F00C3FB9C /* _ConnectionPoolTestUtils */; };
+		9D5FE71D2F4655B600C3FB9C /* MySQLNIO in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5FE71C2F4655B600C3FB9C /* MySQLNIO */; };
+		9D5FE7202F4655E500C3FB9C /* MongoSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5FE71F2F4655E500C3FB9C /* MongoSwift */; };
+		9D5FE7222F4655E500C3FB9C /* MongoSwiftSync in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5FE7212F4655E500C3FB9C /* MongoSwiftSync */; };
+		9D5FE7252F46567D00C3FB9C /* RediStack in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5FE7242F46567D00C3FB9C /* RediStack */; };
+		9D5FE7272F46567D00C3FB9C /* RediStackTestUtils in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5FE7262F46567D00C3FB9C /* RediStackTestUtils */; };
+		9D5FE7292F46567D00C3FB9C /* RedisTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 9D5FE7282F46567D00C3FB9C /* RedisTypes */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		9DB369EA2F4599500031246F /* BaseCrawler-Mac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "BaseCrawler-Mac.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		9DB369EC2F4599500031246F /* BaseCrawler-Mac */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "BaseCrawler-Mac";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9DB369E72F4599500031246F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D5FE7292F46567D00C3FB9C /* RedisTypes in Frameworks */,
+				9D5FE7202F4655E500C3FB9C /* MongoSwift in Frameworks */,
+				9D5FE71D2F4655B600C3FB9C /* MySQLNIO in Frameworks */,
+				9D5FE7222F4655E500C3FB9C /* MongoSwiftSync in Frameworks */,
+				9D5FE71A2F46557F00C3FB9C /* _ConnectionPoolTestUtils in Frameworks */,
+				9D5FE7182F46557F00C3FB9C /* _ConnectionPoolModule in Frameworks */,
+				9D5FE7272F46567D00C3FB9C /* RediStackTestUtils in Frameworks */,
+				9D5FE7252F46567D00C3FB9C /* RediStack in Frameworks */,
+				9D5FE7162F46557F00C3FB9C /* PostgresNIO in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		9DB369E12F4599500031246F = {
+			isa = PBXGroup;
+			children = (
+				9DB369EC2F4599500031246F /* BaseCrawler-Mac */,
+				9DB369EB2F4599500031246F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9DB369EB2F4599500031246F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9DB369EA2F4599500031246F /* BaseCrawler-Mac.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9DB369E92F4599500031246F /* BaseCrawler-Mac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9DB369F72F4599500031246F /* Build configuration list for PBXNativeTarget "BaseCrawler-Mac" */;
+			buildPhases = (
+				9DB369E62F4599500031246F /* Sources */,
+				9DB369E72F4599500031246F /* Frameworks */,
+				9DB369E82F4599500031246F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				9DB369EC2F4599500031246F /* BaseCrawler-Mac */,
+			);
+			name = "BaseCrawler-Mac";
+			packageProductDependencies = (
+				9D5FE7152F46557F00C3FB9C /* PostgresNIO */,
+				9D5FE7172F46557F00C3FB9C /* _ConnectionPoolModule */,
+				9D5FE7192F46557F00C3FB9C /* _ConnectionPoolTestUtils */,
+				9D5FE71C2F4655B600C3FB9C /* MySQLNIO */,
+				9D5FE71F2F4655E500C3FB9C /* MongoSwift */,
+				9D5FE7212F4655E500C3FB9C /* MongoSwiftSync */,
+				9D5FE7242F46567D00C3FB9C /* RediStack */,
+				9D5FE7262F46567D00C3FB9C /* RediStackTestUtils */,
+				9D5FE7282F46567D00C3FB9C /* RedisTypes */,
+			);
+			productName = "BaseCrawler-Mac";
+			productReference = 9DB369EA2F4599500031246F /* BaseCrawler-Mac.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		9DB369E22F4599500031246F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2620;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					9DB369E92F4599500031246F = {
+						CreatedOnToolsVersion = 26.2;
+					};
+				};
+			};
+			buildConfigurationList = 9DB369E52F4599500031246F /* Build configuration list for PBXProject "BaseCrawler-Mac" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 9DB369E12F4599500031246F;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9D5FE7142F46557F00C3FB9C /* XCRemoteSwiftPackageReference "postgres-nio" */,
+				9D5FE71B2F4655B600C3FB9C /* XCRemoteSwiftPackageReference "mysql-nio" */,
+				9D5FE71E2F4655E500C3FB9C /* XCRemoteSwiftPackageReference "mongo-swift-driver" */,
+				9D5FE7232F46567D00C3FB9C /* XCRemoteSwiftPackageReference "RediStack" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9DB369EB2F4599500031246F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9DB369E92F4599500031246F /* BaseCrawler-Mac */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9DB369E82F4599500031246F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		9DB369E62F4599500031246F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		9DB369F52F4599500031246F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = HC8P3865M9;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		9DB369F62F4599500031246F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = HC8P3865M9;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		9DB369F82F4599500031246F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HC8P3865M9;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "InfernalAquatics.BaseCrawler-Mac";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9DB369F92F4599500031246F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HC8P3865M9;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "InfernalAquatics.BaseCrawler-Mac";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		9DB369E52F4599500031246F /* Build configuration list for PBXProject "BaseCrawler-Mac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9DB369F52F4599500031246F /* Debug */,
+				9DB369F62F4599500031246F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9DB369F72F4599500031246F /* Build configuration list for PBXNativeTarget "BaseCrawler-Mac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9DB369F82F4599500031246F /* Debug */,
+				9DB369F92F4599500031246F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9D5FE7142F46557F00C3FB9C /* XCRemoteSwiftPackageReference "postgres-nio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vapor/postgres-nio.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.30.1;
+			};
+		};
+		9D5FE71B2F4655B600C3FB9C /* XCRemoteSwiftPackageReference "mysql-nio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vapor/mysql-nio.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.9.1;
+			};
+		};
+		9D5FE71E2F4655E500C3FB9C /* XCRemoteSwiftPackageReference "mongo-swift-driver" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mongodb/mongo-swift-driver.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		9D5FE7232F46567D00C3FB9C /* XCRemoteSwiftPackageReference "RediStack" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/swift-server/RediStack.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.6.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9D5FE7152F46557F00C3FB9C /* PostgresNIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D5FE7142F46557F00C3FB9C /* XCRemoteSwiftPackageReference "postgres-nio" */;
+			productName = PostgresNIO;
+		};
+		9D5FE7172F46557F00C3FB9C /* _ConnectionPoolModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D5FE7142F46557F00C3FB9C /* XCRemoteSwiftPackageReference "postgres-nio" */;
+			productName = _ConnectionPoolModule;
+		};
+		9D5FE7192F46557F00C3FB9C /* _ConnectionPoolTestUtils */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D5FE7142F46557F00C3FB9C /* XCRemoteSwiftPackageReference "postgres-nio" */;
+			productName = _ConnectionPoolTestUtils;
+		};
+		9D5FE71C2F4655B600C3FB9C /* MySQLNIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D5FE71B2F4655B600C3FB9C /* XCRemoteSwiftPackageReference "mysql-nio" */;
+			productName = MySQLNIO;
+		};
+		9D5FE71F2F4655E500C3FB9C /* MongoSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D5FE71E2F4655E500C3FB9C /* XCRemoteSwiftPackageReference "mongo-swift-driver" */;
+			productName = MongoSwift;
+		};
+		9D5FE7212F4655E500C3FB9C /* MongoSwiftSync */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D5FE71E2F4655E500C3FB9C /* XCRemoteSwiftPackageReference "mongo-swift-driver" */;
+			productName = MongoSwiftSync;
+		};
+		9D5FE7242F46567D00C3FB9C /* RediStack */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D5FE7232F46567D00C3FB9C /* XCRemoteSwiftPackageReference "RediStack" */;
+			productName = RediStack;
+		};
+		9D5FE7262F46567D00C3FB9C /* RediStackTestUtils */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D5FE7232F46567D00C3FB9C /* XCRemoteSwiftPackageReference "RediStack" */;
+			productName = RediStackTestUtils;
+		};
+		9D5FE7282F46567D00C3FB9C /* RedisTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D5FE7232F46567D00C3FB9C /* XCRemoteSwiftPackageReference "RediStack" */;
+			productName = RedisTypes;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 9DB369E22F4599500031246F /* Project object */;
+}
