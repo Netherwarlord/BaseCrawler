@@ -6,6 +6,19 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		9DA9015C2F57F9EB0004B3DF /* PostgresNIO in Frameworks */ = {isa = PBXBuildFile; productRef = 9DA9015B2F57F9EB0004B3DF /* PostgresNIO */; };
+		9DA9015E2F57F9EB0004B3DF /* _ConnectionPoolModule in Frameworks */ = {isa = PBXBuildFile; productRef = 9DA9015D2F57F9EB0004B3DF /* _ConnectionPoolModule */; };
+		9DA901602F57F9EB0004B3DF /* _ConnectionPoolTestUtils in Frameworks */ = {isa = PBXBuildFile; productRef = 9DA9015F2F57F9EB0004B3DF /* _ConnectionPoolTestUtils */; };
+		9DA901632F57FA050004B3DF /* MySQLNIO in Frameworks */ = {isa = PBXBuildFile; productRef = 9DA901622F57FA050004B3DF /* MySQLNIO */; };
+		9DA901662F57FA390004B3DF /* MongoSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9DA901652F57FA390004B3DF /* MongoSwift */; };
+		9DA901682F57FA390004B3DF /* MongoSwiftSync in Frameworks */ = {isa = PBXBuildFile; productRef = 9DA901672F57FA390004B3DF /* MongoSwiftSync */; };
+		9DA9016B2F57FA520004B3DF /* RediStack in Frameworks */ = {isa = PBXBuildFile; productRef = 9DA9016A2F57FA520004B3DF /* RediStack */; };
+		9DA9016D2F57FA520004B3DF /* RediStackTestUtils in Frameworks */ = {isa = PBXBuildFile; productRef = 9DA9016C2F57FA520004B3DF /* RediStackTestUtils */; };
+		9DA9016F2F57FA520004B3DF /* RedisTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 9DA9016E2F57FA520004B3DF /* RedisTypes */; };
+		9DA901722F57FF1B0004B3DF /* TDS in Frameworks */ = {isa = PBXBuildFile; productRef = 9DA901712F57FF1B0004B3DF /* TDS */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		9DA9013A2F57F2750004B3DF /* BaseCrawler.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BaseCrawler.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +36,16 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9DA9016F2F57FA520004B3DF /* RedisTypes in Frameworks */,
+				9DA901662F57FA390004B3DF /* MongoSwift in Frameworks */,
+				9DA901632F57FA050004B3DF /* MySQLNIO in Frameworks */,
+				9DA901682F57FA390004B3DF /* MongoSwiftSync in Frameworks */,
+				9DA901602F57F9EB0004B3DF /* _ConnectionPoolTestUtils in Frameworks */,
+				9DA9015E2F57F9EB0004B3DF /* _ConnectionPoolModule in Frameworks */,
+				9DA901722F57FF1B0004B3DF /* TDS in Frameworks */,
+				9DA9016D2F57FA520004B3DF /* RediStackTestUtils in Frameworks */,
+				9DA9016B2F57FA520004B3DF /* RediStack in Frameworks */,
+				9DA9015C2F57F9EB0004B3DF /* PostgresNIO in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +88,16 @@
 			);
 			name = BaseCrawler;
 			packageProductDependencies = (
+				9DA9015B2F57F9EB0004B3DF /* PostgresNIO */,
+				9DA9015D2F57F9EB0004B3DF /* _ConnectionPoolModule */,
+				9DA9015F2F57F9EB0004B3DF /* _ConnectionPoolTestUtils */,
+				9DA901622F57FA050004B3DF /* MySQLNIO */,
+				9DA901652F57FA390004B3DF /* MongoSwift */,
+				9DA901672F57FA390004B3DF /* MongoSwiftSync */,
+				9DA9016A2F57FA520004B3DF /* RediStack */,
+				9DA9016C2F57FA520004B3DF /* RediStackTestUtils */,
+				9DA9016E2F57FA520004B3DF /* RedisTypes */,
+				9DA901712F57FF1B0004B3DF /* TDS */,
 			);
 			productName = BaseCrawler;
 			productReference = 9DA9013A2F57F2750004B3DF /* BaseCrawler.app */;
@@ -94,6 +127,13 @@
 			);
 			mainGroup = 9DA901312F57F2750004B3DF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9DA9015A2F57F9EB0004B3DF /* XCRemoteSwiftPackageReference "postgres-nio" */,
+				9DA901612F57FA050004B3DF /* XCRemoteSwiftPackageReference "mysql-nio" */,
+				9DA901642F57FA390004B3DF /* XCRemoteSwiftPackageReference "mongo-swift-driver" */,
+				9DA901692F57FA520004B3DF /* XCRemoteSwiftPackageReference "RediStack" */,
+				9DA901702F57FF1B0004B3DF /* XCRemoteSwiftPackageReference "tds-nio" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9DA9013B2F57F2750004B3DF /* Products */;
 			projectDirPath = "";
@@ -331,6 +371,102 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9DA9015A2F57F9EB0004B3DF /* XCRemoteSwiftPackageReference "postgres-nio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vapor/postgres-nio.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.32.0;
+			};
+		};
+		9DA901612F57FA050004B3DF /* XCRemoteSwiftPackageReference "mysql-nio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vapor/mysql-nio.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.9.1;
+			};
+		};
+		9DA901642F57FA390004B3DF /* XCRemoteSwiftPackageReference "mongo-swift-driver" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mongodb/mongo-swift-driver";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		9DA901692F57FA520004B3DF /* XCRemoteSwiftPackageReference "RediStack" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/swift-server/RediStack.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.6.3;
+			};
+		};
+		9DA901702F57FF1B0004B3DF /* XCRemoteSwiftPackageReference "tds-nio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/aaronjedwards/tds-nio";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9DA9015B2F57F9EB0004B3DF /* PostgresNIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DA9015A2F57F9EB0004B3DF /* XCRemoteSwiftPackageReference "postgres-nio" */;
+			productName = PostgresNIO;
+		};
+		9DA9015D2F57F9EB0004B3DF /* _ConnectionPoolModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DA9015A2F57F9EB0004B3DF /* XCRemoteSwiftPackageReference "postgres-nio" */;
+			productName = _ConnectionPoolModule;
+		};
+		9DA9015F2F57F9EB0004B3DF /* _ConnectionPoolTestUtils */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DA9015A2F57F9EB0004B3DF /* XCRemoteSwiftPackageReference "postgres-nio" */;
+			productName = _ConnectionPoolTestUtils;
+		};
+		9DA901622F57FA050004B3DF /* MySQLNIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DA901612F57FA050004B3DF /* XCRemoteSwiftPackageReference "mysql-nio" */;
+			productName = MySQLNIO;
+		};
+		9DA901652F57FA390004B3DF /* MongoSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DA901642F57FA390004B3DF /* XCRemoteSwiftPackageReference "mongo-swift-driver" */;
+			productName = MongoSwift;
+		};
+		9DA901672F57FA390004B3DF /* MongoSwiftSync */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DA901642F57FA390004B3DF /* XCRemoteSwiftPackageReference "mongo-swift-driver" */;
+			productName = MongoSwiftSync;
+		};
+		9DA9016A2F57FA520004B3DF /* RediStack */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DA901692F57FA520004B3DF /* XCRemoteSwiftPackageReference "RediStack" */;
+			productName = RediStack;
+		};
+		9DA9016C2F57FA520004B3DF /* RediStackTestUtils */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DA901692F57FA520004B3DF /* XCRemoteSwiftPackageReference "RediStack" */;
+			productName = RediStackTestUtils;
+		};
+		9DA9016E2F57FA520004B3DF /* RedisTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DA901692F57FA520004B3DF /* XCRemoteSwiftPackageReference "RediStack" */;
+			productName = RedisTypes;
+		};
+		9DA901712F57FF1B0004B3DF /* TDS */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DA901702F57FF1B0004B3DF /* XCRemoteSwiftPackageReference "tds-nio" */;
+			productName = TDS;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9DA901322F57F2750004B3DF /* Project object */;
 }
