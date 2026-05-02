@@ -11,14 +11,17 @@ from connection_manager import ConnectionManager
 from db_connector import get_connector
 
 class NewConnectionWindow(ctk.CTkToplevel):
-    def __init__(self, master, connection_manager):
+    def __init__(self, master, connection_manager, existing_connection=None):
         super().__init__(master)
         self.lift()
         self.focus_force()
         self.grab_set()
-        self.title("New Connection")
-        self.geometry("400x550")
         self.connection_manager = connection_manager
+        self.existing_connection = existing_connection
+        self._edit_mode = existing_connection is not None
+
+        self.title("Edit Connection" if self._edit_mode else "New Connection")
+        self.geometry("400x550")
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
@@ -31,7 +34,7 @@ class NewConnectionWindow(ctk.CTkToplevel):
         # DB Type
         ctk.CTkLabel(self, text="Database Type:").grid(row=1, column=0, padx=10, pady=5, sticky="w")
         self.db_type_var = ctk.StringVar(value="PostgreSQL")
-        self.db_type_optionmenu = ctk.CTkOptionMenu(self, values=["PostgreSQL", "MongoDB", "MariaDB", "MySQL"], 
+        self.db_type_optionmenu = ctk.CTkOptionMenu(self, values=["PostgreSQL", "MongoDB", "MariaDB", "MySQL"],
                                                     variable=self.db_type_var)
         self.db_type_optionmenu.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
 
@@ -54,14 +57,37 @@ class NewConnectionWindow(ctk.CTkToplevel):
         ctk.CTkLabel(self, text="Password:").grid(row=5, column=0, padx=10, pady=5, sticky="w")
         self.password_entry = ctk.CTkEntry(self, show="*")
         self.password_entry.grid(row=5, column=1, padx=10, pady=5, sticky="ew")
+        self._pw_visible = False
+        self.pw_toggle_btn = ctk.CTkButton(
+            self,
+            text="◡",
+            width=28,
+            height=28,
+            corner_radius=6,
+            fg_color="transparent",
+            hover_color=("gray75", "gray35"),
+            text_color=("gray10", "gray90"),
+            command=self._toggle_password_visibility
+        )
+        self.password_entry.bind("<Configure>", self._reposition_pw_toggle)
 
         # Database Name
         ctk.CTkLabel(self, text="Database Name:").grid(row=6, column=0, padx=10, pady=5, sticky="w")
         self.database_entry = ctk.CTkEntry(self)
         self.database_entry.grid(row=6, column=1, padx=10, pady=5, sticky="ew")
 
-        # Save Button
-        self.save_button = ctk.CTkButton(self, text="Save Connection", command=self._save_connection)
+        # Pre-fill fields when editing an existing connection
+        if self._edit_mode:
+            self.name_entry.insert(0, existing_connection.get("name", ""))
+            self.db_type_var.set(existing_connection.get("db_type", "PostgreSQL"))
+            self.host_entry.insert(0, existing_connection.get("host", ""))
+            self.port_entry.insert(0, existing_connection.get("port", ""))
+            self.user_entry.insert(0, existing_connection.get("user", ""))
+            self.password_entry.insert(0, existing_connection.get("password", ""))
+            self.database_entry.insert(0, existing_connection.get("database", ""))
+
+        button_label = "Update Connection" if self._edit_mode else "Save Connection"
+        self.save_button = ctk.CTkButton(self, text=button_label, command=self._save_connection)
         self.save_button.grid(row=7, column=0, columnspan=2, padx=10, pady=20, sticky="ew")
 
     def _save_connection(self):
@@ -74,11 +100,32 @@ class NewConnectionWindow(ctk.CTkToplevel):
             "password": self.password_entry.get(),
             "database": self.database_entry.get()
         }
-        self.connection_manager.add_connection(connection_details)
-        CTkMessagebox(title="Success", message="Connection saved successfully.", icon="check", option_1="Ok")
-        self.master._load_connections_list() # Refresh the connections list in ManageConnectionsWindow
-        self.master.master._load_connection_buttons() # Refresh the main app's connection list
+        if self._edit_mode:
+            self.connection_manager.update_connection(self.existing_connection["name"], connection_details)
+            CTkMessagebox(title="Success", message="Connection updated successfully.", icon="check", option_1="Ok")
+        else:
+            self.connection_manager.add_connection(connection_details)
+            CTkMessagebox(title="Success", message="Connection saved successfully.", icon="check", option_1="Ok")
+        self.master._load_connections_list()
+        self.master.master._load_connection_buttons()
         self.destroy()
+
+    def _reposition_pw_toggle(self, event=None):
+        self.update_idletasks()
+        e = self.password_entry
+        btn_size = 28
+        x = e.winfo_x() + e.winfo_width() - btn_size - 4
+        y = e.winfo_y() + (e.winfo_height() - btn_size) // 2
+        self.pw_toggle_btn.place(x=x, y=y)
+
+    def _toggle_password_visibility(self):
+        self._pw_visible = not self._pw_visible
+        if self._pw_visible:
+            self.password_entry.configure(show="")
+            self.pw_toggle_btn.configure(text="👁")
+        else:
+            self.password_entry.configure(show="*")
+            self.pw_toggle_btn.configure(text="◡")
 
 
 class ManageConnectionsWindow(ctk.CTkToplevel):
@@ -101,12 +148,13 @@ class ManageConnectionsWindow(ctk.CTkToplevel):
 
         self.control_frame = ctk.CTkFrame(self)
         self.control_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
-        self.control_frame.grid_columnconfigure((0,1,2,3), weight=1)
+        self.control_frame.grid_columnconfigure((0,1,2), weight=1)
 
-        ctk.CTkButton(self.control_frame, text="Add New", command=self._add_new_connection).grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-        ctk.CTkButton(self.control_frame, text="Remove", command=self._remove_selected).grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-        ctk.CTkButton(self.control_frame, text="Move Up", command=self._move_up).grid(row=0, column=2, padx=5, pady=5, sticky="ew")
-        ctk.CTkButton(self.control_frame, text="Move Down", command=self._move_down).grid(row=0, column=3, padx=5, pady=5, sticky="ew")
+        ctk.CTkButton(self.control_frame, text="Add", command=self._add_new_connection).grid(row=0, column=0, padx=5, pady=5, sticky="ew")
+        ctk.CTkButton(self.control_frame, text="Edit", command=self._edit_selected).grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        ctk.CTkButton(self.control_frame, text="Remove", command=self._remove_selected).grid(row=0, column=2, padx=5, pady=5, sticky="ew")
+        ctk.CTkButton(self.control_frame, text="↑", width=40, command=self._move_up).grid(row=0, column=3, padx=(2,2), pady=5)
+        ctk.CTkButton(self.control_frame, text="↓", width=40, command=self._move_down).grid(row=0, column=4, padx=(2,5), pady=5)
 
         self.selected_connection_name = None
         self._load_connections_list()
@@ -131,8 +179,18 @@ class ManageConnectionsWindow(ctk.CTkToplevel):
     def _add_new_connection(self):
         new_conn_win = NewConnectionWindow(self, self.connection_manager)
         new_conn_win.focus()
-        # After new connection is saved, refresh this list
         new_conn_win.protocol("WM_DELETE_WINDOW", lambda: (self._load_connections_list(), new_conn_win.destroy()))
+
+    def _edit_selected(self):
+        if not self.selected_connection_name:
+            CTkMessagebox(title="Warning", message="No connection selected to edit.", icon="warning", option_1="Ok")
+            return
+        existing = next((c for c in self.connection_manager.get_connections() if c.get("name") == self.selected_connection_name), None)
+        if not existing:
+            return
+        edit_win = NewConnectionWindow(self, self.connection_manager, existing_connection=existing)
+        edit_win.focus()
+        edit_win.protocol("WM_DELETE_WINDOW", lambda: (self._load_connections_list(), edit_win.destroy()))
 
     def _remove_selected(self):
         if self.selected_connection_name:
