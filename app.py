@@ -392,6 +392,8 @@ class DBManagerApp(ctk.CTk):
         self.status_queue = queue.Queue()
         self.default_status_color = None
         self.last_connection_status = None
+        self._status_stop_event = threading.Event()
+        self._status_thread = None
 
         # Configure grid layout (2x1)
         self.grid_rowconfigure(0, weight=1)
@@ -523,7 +525,7 @@ class DBManagerApp(ctk.CTk):
         # Start status check loop
         if self.status_label:
             self.status_label.configure(text="Checking...", text_color=self.default_status_color)
-        self._schedule_status_check()
+        self._start_status_poller()
 
         # Show connect button
         self.connect_button.grid(row=100, column=0, padx=20, pady=20, sticky="s")
@@ -533,10 +535,7 @@ class DBManagerApp(ctk.CTk):
             CTkMessagebox(title="Warning", message="No connection selected to connect.", icon="warning", option_1="Ok")
             return
         
-        # Cancel status check loop
-        if self.status_check_id:
-            self.after_cancel(self.status_check_id)
-            self.status_check_id = None
+        self._stop_status_poller()
         
         connection_details = self.selected_connection_details
 
@@ -622,14 +621,15 @@ class DBManagerApp(ctk.CTk):
         ctk.CTkLabel(self.connection_details_display_frame, text=f"First Connected: N/A").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w") # Placeholder
         row_idx += 1
 
-    def _schedule_status_check(self):
-        if self.status_check_id:
-            self.after_cancel(self.status_check_id)
+    def _start_status_poller(self):
+        self._stop_status_poller()
+        self._status_stop_event = threading.Event()
+        connection_details = self.selected_connection_details
 
-        def check_worker():
-            if self.selected_connection_details:
+        def poller_worker(stop_event):
+            while True:
                 try:
-                    connector = get_connector(self.selected_connection_details)
+                    connector = get_connector(connection_details)
                     if connector.connect(silent=True):
                         self.status_queue.put("Online")
                         connector.disconnect(silent=True)
@@ -637,27 +637,36 @@ class DBManagerApp(ctk.CTk):
                         self.status_queue.put("Offline")
                 except Exception:
                     self.status_queue.put("Error")
-        
-        threading.Thread(target=check_worker, daemon=True).start()
-        self._process_status_queue()
+                if stop_event.wait(30):
+                    break
 
-    def _process_status_queue(self):
+        self._status_thread = threading.Thread(target=poller_worker, args=(self._status_stop_event,), daemon=True)
+        self._status_thread.start()
+        self._poll_status_queue()
+
+    def _stop_status_poller(self):
+        self._status_stop_event.set()
+        if self.status_check_id:
+            self.after_cancel(self.status_check_id)
+            self.status_check_id = None
+
+    def _poll_status_queue(self):
         try:
             status = self.status_queue.get_nowait()
             if status != self.last_connection_status:
                 self.last_connection_status = status
-                if self.status_label:
+                if self.status_label and self.status_label.winfo_exists():
                     if status == "Online":
                         self.status_label.configure(text="Online", text_color="green")
                     elif status == "Offline":
                         self.status_label.configure(text="Offline", text_color="red")
-                    else: # Error
+                    else:
                         self.status_label.configure(text="Error", text_color="orange")
-            
-            self.status_check_id = self.after(1000, self._schedule_status_check)
-
         except queue.Empty:
-            self.status_check_id = self.after(100, self._process_status_queue)
+            pass
+
+        if not self._status_stop_event.is_set():
+            self.status_check_id = self.after(500, self._poll_status_queue)
 
     def _refresh_schema(self):
         if not self.active_connector:
