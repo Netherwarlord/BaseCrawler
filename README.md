@@ -1,5 +1,5 @@
-# BaseCrawler – A Modern, Feature‑Rich Database Management Tool
-### “A powerful, lightweight crawler that extracts structured data from relational & document stores, gives you instant visibility into schema evolution, and lets you script your own workflows.”
+# BaseCrawler – A Modern Desktop Database Management Tool
+### "A powerful, lightweight GUI that lets you explore, edit, and query relational and document databases — all from a single window."
 
 License GitHub Tag GitHub Language Count
 
@@ -10,86 +10,108 @@ License GitHub Tag GitHub Language Count
     <li>Features</li>
     <li>Prerequisites & Installation</li>
     <li>Getting Started</li>
-    <li>Usage Examples</li>
-    <li>Configuration</li>
-    <li>Advanced Options</li>
-    <li>Scripts & API</li>
+    <li>Interface Guide</li>
+    <li>Connection Management</li>
+    <li>Architecture</li>
     <li>Contributing</li>
     <li>Roadmap</li>
     <li>License</li>
 </ol>
 
 ## 1. Overview
-BaseCrawler is a command‑line / GUI tool that lets you:
+BaseCrawler is a desktop GUI database management tool built with Python and CustomTkinter. It lets you:
 <ul>
-    <li>Catalog, explore and export schemas from virtually any relational or document database (MySQL, PostgreSQL, SQLite, MongoDB, Cassandra, DynamoDB, etc.).</li>
-    <li>Run ad‑hoc queries against the discovered schema.
-Export results to CSV/JSON files for downstream analysis.
-Automate repetitive maintenance tasks (e.g., rename columns, purge old tables, generate documentation).</li>
-    <li>It’s written in Python 3.9+ and uses a lightweight dependency tree (pandas, sqlalchemy, requests, pydantic, etc.) making it fast to start and easy to run on any OS.</li>
+    <li>Connect to and manage multiple PostgreSQL, MySQL, MariaDB, and MongoDB databases simultaneously.</li>
+    <li>Browse, create, edit, and delete tables and collections — all without writing SQL by hand.</li>
+    <li>View, add, edit, and delete rows from an inline table viewer with persistent column sizing and primary key indicators.</li>
+    <li>Run ad-hoc SQL queries against any connected database from a dedicated query window.</li>
+    <li>Save connection profiles with optional password storage, and instantly switch between them without losing your place.</li>
 </ul>
 
-
-
+BaseCrawler is written in Python 3.10+ and uses CustomTkinter for a native-feeling dark/light mode UI on macOS, Windows, and Linux.
 
 ## 2. Features
+
 <center>
-    <table>
+    <table width="100%">
         <tr>
             <td>Category</td><td>Feature</td>
         </tr>
         <tr>
-            <td>Core</td>
+            <td>Connections</td>
             <td>
                 <ul>
-                    <li>Discover & enumerate tables/fields/columns</li>
-                    <li>Resolve Primary/Foreign Keys</li>
-                    <li>Detect data types (int, float, string, enum).</li>
+                    <li>Saved connection profiles stored in <code>connections.json</code></li>
+                    <li>Supports PostgreSQL, MySQL, MariaDB, and MongoDB</li>
+                    <li>Background status polling — live Online / Offline indicator per connection</li>
+                    <li>Optional password saving per connection with "Save password" toggle</li>
+                    <li>Per-connection workspace state — switch connections and return to exactly where you left off</li>
+                    <li>One-click Disconnect from the ribbon toolbar</li>
                 </ul>
             </td>
         </tr>
         <tr>
-            <td>Data Export</td>
+            <td>Schema Browser</td>
             <td>
                 <ul>
-                    <li>One-click CSV eport per table</li>
-                    <li>Bulk JSON export of entire schema</li>
-                    <li>Filter by column name or type</li>
+                    <li>Table / collection list with single-click select and double-click open</li>
+                    <li>Add Table wizard with per-column PK, Auto, Rand, Length, and Unique options</li>
+                    <li>Edit Table dialog — modify types, add/drop columns, change constraints</li>
+                    <li>Delete Table with confirmation dialog</li>
+                    <li>MongoDB: collections shown in list; DDL operations automatically hidden</li>
+                    <li>5-second auto-refresh keeps the schema list current</li>
                 </ul>
             </td>
         </tr>
         <tr>
-            <td>Query Engine</td>
+            <td>Inline Table Viewer</td>
             <td>
                 <ul>
-                    <li>Built-in SQL editor with syntax highlighting & auto-completion</li>
-                    <li>Execute arbitrary queries and view results inline</li>
+                    <li>Full-width inline data view — no separate popup windows</li>
+                    <li>🔑 icon on primary key column headers</li>
+                    <li>Alternating row colors with a toggleable grid-line overlay</li>
+                    <li>Resizable columns — widths persist across refreshes per session</li>
+                    <li>Double-click a column separator to auto-fit to content</li>
+                    <li>Double-click any cell for inline editing</li>
+                    <li>Add Row with auto-fill for identity and default columns</li>
+                    <li>Edit Row and Delete Row with confirmation</li>
+                    <li>Add Column and Delete Column while table is open</li>
+                    <li>5-second auto-refresh keeps data current</li>
                 </ul>
             </td>
         </tr>
         <tr>
-            <td>Automation</td>
+            <td>Query Wizard</td>
             <td>
                 <ul>
-                    <li>Scriptable API for programatic discovery (REST)</li>
-                    <li>Export scripts to generate migrations, ETL jobs, etc.</li>
+                    <li>Non-modal query window — stays open while you browse the schema</li>
+                    <li>SQL editor with Execute and Clear actions</li>
+                    <li>Formatted results (column headers + rows) displayed inline</li>
+                    <li>Auto-refreshes the schema list after any DDL statement (CREATE, ALTER, DROP, etc.)</li>
+                    <li>Accessible from both the schema view and the table view via the ribbon</li>
                 </ul>
             </td>
         </tr>
         <tr>
-            <td>Visualization</td>
+            <td>Ribbon Toolbar</td>
             <td>
                 <ul>
-                    <li>Interactive GUI mode that shows a tree of tables.</li>
-                    <li>Quick preview of first 10 rows per table.</li>
+                    <li>MS Office-style ribbon with labeled icon groups</li>
+                    <li>Schema view groups: View · Tables · Query · Connection</li>
+                    <li>Table view groups: Navigate · Rows · Columns · Query</li>
+                    <li>Edit Mode toggle (✏) — dims structural editing buttons when off</li>
+                    <li>Grid Lines toggle (⊞) — show/hide alternating row colors</li>
                 </ul>
             </td>
         </tr>
         <tr>
-            <td>Extensibility</td>
+            <td>UI & Workspace</td>
             <td>
                 <ul>
-                    <li>Custom plugins via plugins/ folder (e.g., add new DB driver).</li>
+                    <li>Dark and Light mode via CustomTkinter</li>
+                    <li>Collapsible connection sidebar (◀ Hide Panel / ▶ Show Panel)</li>
+                    <li>Per-connection open-table state restored on reconnect</li>
+                    <li>All database calls run on background threads — UI stays responsive</li>
                 </ul>
             </td>
         </tr>
@@ -97,270 +119,276 @@ Automate repetitive maintenance tasks (e.g., rename columns, purge old tables, g
 </center>
 
 ## 3. Prerequisites & Installation
-### Using pip (recommended)
-```bash
-pip install -U git+https://github.com/Netherwarlord/BaseCrawler.git
-```
 
-### Or, clone the repo and install from source
+**Required:**
+- Python 3.10+
+- A `base-crawler` conda environment (recommended) **or** a plain virtual environment
+
+### Using conda (recommended)
+
 ```bash
 git clone https://github.com/Netherwarlord/BaseCrawler.git
 cd BaseCrawler
-```
-```bash
-python -m venv .venv   # create a virtual env (Linux/macOS)
-source .venv/bin/activate  # activate it on macOS/Linux
+conda create -n base-crawler python=3.11
+conda activate base-crawler
 pip install -r requirements.txt
 ```
 
-### macOS specific flag
-```bash
- brew link --force --overwrite python
-```
-
-### Verify installation
-```bash
-basecrawler --version   # should print the version number
-```
-###### Note – If you prefer Docker, a minimal image is also available:
-
-```bash
-docker run -it netherwarlord/basecrawler:latest /bin/sh -c "basecrawler"
-```
-
-## 4. Getting Started
-
-### Connect to your database
-
-```bash
-basecrawler connect \
-  --host localhost \
-  --port 5432 \
-  --user postgres \
-  --password mySecretPass \
-  --dbtype postgresql
-Supported --dbtype values: postgresql, mysql, sqlite, mongodb, cassandra, dynamodb.
-```
-
-### Discover the schema
-
-```bash
-basecrawler discover
-```
-
-Export a CSV file for one table
-
-```bash
-basecrawler export --table users --format csv > users.csv
-Run an ad‑hoc query
-```
-
-```bash
-basecrawler exec \
-  "SELECT * FROM inventory WHERE quantity < 5"
-```
-
-## 5. Usage Examples
-
-### Example 1 – One‑liner Discovery & Export
-
-```bash
-basecrawler discover --output json > schema.json && \
-basecrawler export --table orders --format csv -o orders.csv
-```
-
-### Example 2 – Execute a Query and Save to JSON
-
-```bash
-basecrawler exec \
-  "SELECT * FROM products WHERE price < 100" \
-  --output json > low_price_products.json
-
-```
-
-### Example 3 – Run a Custom Script (Python)
-
-#### Create scripts/example.py:
-
-```
-scripts/example.py
-```
-
-```python
-from basecrawler import cli, config
-
-if __name__ == "__main__":
-    # Load the discovered schema and filter for numeric columns only
-    schema = config.get_schema()
-    num_cols = [c for c in schema if c.type in ["int", "float"]]
-    print("Numeric columns:", num_cols)
-```
-
-### Run it:
-
-```bash
-basecrawler run scripts/example.py
-```
-
-## 6. Configuration
-### All runtime options can be overridden via environment variables or an external config.yaml file.
-
-### 6.1 Environment Variables
-
-<center>
-    <table>
-        <tr>
-            <td>Variable</td><td>Description</td>
-        </tr>
-        <tr>
-            <td>BASECRAWLER_LOG_LEVEL</td><td>DEBUG, INFO, WARNING, ERROR, CRITICAL. Default: INFO.</td>
-        </tr>
-        <tr>
-            <td>BASECRAWLER_DB_HOST</td><td>Hostname of the DB server.</td>
-        </tr>
-        <tr>
-            <td>BASECRAWLER_DB_PORT</td><td>Port number (e.g., 5432).</td>
-        </tr>
-        <tr>
-            <td>BASECRAWLER_USER</td><td>Username for authentication.</td>
-        </tr>
-        <tr>
-            <td>BASECRAWLER_PASS</td><td>Password for authentication.</td>
-        </tr>
-        <tr>
-            <td>BASECRAWLER_DB_TYPE</td><td>One of postgresql, mysql, sqlite, mongodb, cassandra, dynamodb.</td>
-        </tr>
-    </table>
-</center>
-
-### 6.2 config.yaml
-#### config.yaml (stored in the project root)
-
-```yaml
-database:
-  host: "localhost"
-  port: 5432
-  username: "postgres"
-  password: "secret"
-  type:   postgresql
-logging:
-  level: DEBUG
-```
-
-#### Tip – Run ```basecrawler --help``` to see all sub‑commands and their flags.
-
-## 7. Advanced Options
-<center>
-    <table>
-        <tr>
-            <td>Flag</td><td>Description</td>
-        </tr>
-        <tr>
-            <td>--verbose, -v</td><td>Print detailed progress (e.g., column scan speed).</td>
-        </tr>
-        <tr>
-            <td>--force, -f</td><td>Skip the confirmation prompt for destructive actions (drop, purge).</td>
-        </tr>  
-        <tr>
-            <td>--no-ui</td><td>Disable the optional GUI overlay when running headless.</td>
-        </tr>  
-        <tr>
-            <td>--Plugin [path]</td><td>Load a custom plugin from any directory (e.g., to add support for a new DB driver).</td>
-        </tr>
-    </table>
-</center>
-
-#### Example – Force export of all tables without prompting
-
-```bash
-basecrawler export --format json --force > all_tables.json
-```
-
-## 8. Scripts & API
-
-### 8.1 CLI Sub‑Commands
-
-<center>
-    <table>
-        <tr>
-            <td>Command</td><td>Synopsis</td>
-        </tr>
-        <tr>
-            <td>discover</td><td>Enumerate tabels columns, primary keys and foreign constraints.</td>
-        </tr>
-        <tr>
-            <td>export [table]</td><td>Export a table to CSV/JSON/TXT.</td>
-        </tr>
-        <tr>
-            <td>exec [sql]</td><td>Run arbitrary SQL; outputs result set in JSON by default.</td>
-        </tr>
-        <tr>
-            <td>run [script] [args]</td><td>Execute any python script that imports the internal helper module.</td>
-        </tr>
-        <tr>
-            <td>list-plugins</td><td>Show all installed plugins and their version.</td>
-        </tr>
-        <tr>
-            <td>Connect</td><td>Establish a connection before discovery (optional for. CLI mode).</td>
-        </tr>
-    </table>
-</center>
-
-### 8.2 Programmatic API
-```python
-from basecrawler import cli, config
-```
-
-# Discover schema without UI
-
-```python
-schema = config.get_schema()
-print(schema)
-```
-
-# Export to CSV using pandas
-
-```python
-import pandas as pd
-pd.read_sql_table('orders', conn).to_csv('orders.csv')
-```
-
-### All classes (Schema, Connection, Executor) expose a clean API and are fully documented in the source code.
-
-## 9. Contributing
-### We welcome contributions! Whether you have a bug report, a feature request, or just want to improve documentation—open an issue first so we can discuss it before diving into code.
-
-### 9.1 Development Setup
+### Using a plain virtual environment
 
 ```bash
 git clone https://github.com/Netherwarlord/BaseCrawler.git
 cd BaseCrawler
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
+python -m venv .venv
+source .venv/bin/activate   # macOS / Linux
+.venv\Scripts\activate      # Windows
+pip install -r requirements.txt
 ```
 
-### Run the test suite:
+### macOS – if pip complains about the system Python
 
-```python
-pytest tests/
+```bash
+brew link --force --overwrite python
 ```
 
-### 9.2 Style & Linting
-PEP 8 compliance – Run flake8 locally.
+### Key dependencies
 
-Black formatter – Apply with black ..
+<center>
+    <table width="100%">
+        <tr>
+            <td>Package</td><td>Purpose</td>
+        </tr>
+        <tr>
+            <td>customtkinter</td><td>Modern themed GUI framework</td>
+        </tr>
+        <tr>
+            <td>CTkMessagebox</td><td>Styled dialog boxes</td>
+        </tr>
+        <tr>
+            <td>psycopg2</td><td>PostgreSQL driver</td>
+        </tr>
+        <tr>
+            <td>mysql-connector-python</td><td>MySQL / MariaDB driver</td>
+        </tr>
+        <tr>
+            <td>pymongo</td><td>MongoDB driver</td>
+        </tr>
+    </table>
+</center>
+
+## 4. Getting Started
+
+### Launch the application
+
+Always activate the conda environment first, then run `app.py` directly:
+
+```bash
+conda activate base-crawler
+python app.py
+```
+
+To syntax-check without launching the GUI:
+
+```bash
+python -m py_compile app.py
+```
+
+### Add your first connection
+
+1. Click **Manage Connections** at the bottom of the left sidebar.
+2. Click **Add Connection** and fill in the connection name, database type, host, port, username, password, and database name.
+3. Click **Save Connection**. The connection now appears in the sidebar.
+
+### Connect and explore
+
+1. Click a connection name in the sidebar to select it — the right panel shows connection details and a live status indicator.
+2. Enter your username and password in the credentials panel (check **Save password** if you want it stored).
+3. Click **Connect**. The ribbon toolbar and table list appear automatically.
+4. Double-click any table in the list to open it inline, or single-click and press **▶ Open** in the ribbon.
+
+## 5. Interface Guide
+
+### Top Bar
+
+The narrow bar above the workspace contains three persistent controls:
+
+<center>
+    <table width="100%">
+        <tr>
+            <td>Control</td><td>Function</td>
+        </tr>
+        <tr>
+            <td>◀ Hide Panel / ▶ Show Panel</td><td>Collapse or expand the left connection sidebar</td>
+        </tr>
+        <tr>
+            <td>⊞ (checkbox)</td><td>Toggle alternating row grid lines in the table viewer</td>
+        </tr>
+        <tr>
+            <td>✏ (checkbox)</td><td>Toggle Edit Mode — when off, structural editing buttons are dimmed</td>
+        </tr>
+    </table>
+</center>
+
+### Schema View Ribbon
+
+Visible when browsing the table list. Groups and their icon buttons:
+
+<center>
+    <table width="100%">
+        <tr>
+            <td>Group</td><td>Buttons</td>
+        </tr>
+        <tr>
+            <td>View</td><td>▶ Open — open the selected table inline</td>
+        </tr>
+        <tr>
+            <td>Tables</td><td>✎ Edit · ⊕ Add · ⊗ Delete</td>
+        </tr>
+        <tr>
+            <td>Query</td><td>≡ SQL — open the Query Wizard window</td>
+        </tr>
+        <tr>
+            <td>Connection</td><td>⏻ Disconnect — disconnect and return to the connection info panel</td>
+        </tr>
+    </table>
+</center>
+
+### Table View Ribbon
+
+Visible when a table is open inline. Groups and their icon buttons:
+
+<center>
+    <table width="100%">
+        <tr>
+            <td>Group</td><td>Buttons</td>
+        </tr>
+        <tr>
+            <td>Navigate</td><td>◀ Back — return to the table list</td>
+        </tr>
+        <tr>
+            <td>Rows</td><td>⊕ Add · ✎ Edit · ⊗ Delete</td>
+        </tr>
+        <tr>
+            <td>Columns</td><td>⊕ Add · ⊗ Delete</td>
+        </tr>
+        <tr>
+            <td>Query</td><td>≡ SQL — open the Query Wizard window</td>
+        </tr>
+    </table>
+</center>
+
+### Column Resizing
+
+- **Drag** a column separator in the header to resize. Width is remembered for the rest of the session.
+- **Double-click** a column separator to auto-fit the column to its widest content.
+
+## 6. Connection Management
+
+### Connection Info Screen
+
+When you select a saved connection (but are not yet connected), the right panel shows:
+
+- **Connection name** — large, top-left
+- **Info card** — Type, Host, Port, DB, live Status (Online / Offline / Checking…), and Size
+- **Credentials panel** — editable Username and Password fields, pre-filled from saved values
+- **Save password** checkbox — controls whether the password is persisted to `connections.json`
+- **Connect** button — or press Enter in either credential field
+
+### Saved Connections File
+
+Connections are stored in `connections.json` in the project root. This file is created automatically the first time you save a connection. **Do not commit this file if it contains sensitive credentials.**
+
+### Switching Connections
+
+Click any connection in the sidebar while already connected. BaseCrawler will:
+1. Save your current workspace state (which table is open, the cached schema).
+2. Silently reconnect to the new connection.
+3. Restore your previous workspace for that connection if one exists.
+
+## 7. Architecture
+
+BaseCrawler is three Python files with no web server or external process:
+
+<center>
+    <table width="100%">
+        <tr>
+            <td>File</td><td>Responsibility</td>
+        </tr>
+        <tr>
+            <td><code>connection_manager.py</code></td>
+            <td>Pure data layer. Reads/writes <code>connections.json</code>. No UI dependency. Key methods: <code>add_connection</code>, <code>remove_connection</code>, <code>update_connection</code>, <code>reorder_connection</code>.</td>
+        </tr>
+        <tr>
+            <td><code>db_connector.py</code></td>
+            <td>
+                One <code>DBConnector</code> base class, three concrete implementations:
+                <code>PostgreSQLConnector</code> (psycopg2),
+                <code>MongoDBConnector</code> (pymongo),
+                <code>MySQLMariaDBConnector</code> (mysql-connector-python).
+                <code>get_connector(connection_details)</code> is the factory.
+                All connectors share a common interface: <code>connect</code>, <code>disconnect</code>, <code>fetch_schema</code>, <code>fetch_data</code>, <code>execute_query</code>, <code>insert_data</code>, <code>update_data</code>, <code>delete_data</code>, <code>fetch_column_defaults</code>, <code>fetch_primary_keys</code>, <code>evaluate_expression</code>.
+            </td>
+        </tr>
+        <tr>
+            <td><code>app.py</code></td>
+            <td>
+                All UI. Key classes:
+                <code>DBManagerApp</code> (main window),
+                <code>ManageConnectionsWindow</code>,
+                <code>NewConnectionWindow</code>,
+                <code>AddEditDataWindow</code> (row-level add/edit form),
+                <code>AddTableDialog</code>,
+                <code>EditTableDialog</code>,
+                <code>AddColumnDialog</code>,
+                <code>DeleteColumnDialog</code>,
+                <code>QueryWindow</code>.
+                All DB calls that run in the background use <code>queue.Queue</code> + <code>after()</code> polling — never updating CTk widgets directly from a background thread.
+            </td>
+        </tr>
+    </table>
+</center>
+
+### Threading Model
+
+All database calls that run in the background communicate results back to the main thread via `queue.Queue` + `after()` polling — UI widgets are never updated from a background thread.
+
+The status poller (`_start_status_poller`) is a long-lived daemon thread per selected connection, sleeping 30 s between checks. The auto-refresh timer (`_start_auto_refresh`) fires every 5 seconds via `after()` on the main thread, refreshing either the schema list or the open table depending on the current view.
+
+## 8. Contributing
+
+We welcome contributions! Whether you have a bug report, a feature request, or just want to improve documentation — open an issue first so we can discuss it before diving into code.
+
+### Development Setup
+
+```bash
+git clone https://github.com/Netherwarlord/BaseCrawler.git
+cd BaseCrawler
+conda create -n base-crawler python=3.11
+conda activate base-crawler
+pip install -r requirements.txt
+```
+
+### Style & Linting
+PEP 8 compliance — run `flake8` locally.
+
+Black formatter — apply with `black .`
 
 ## 10. Roadmap
 
 <center>
-    <table>
+    <table width="100%">
         <tr>
-            <td>Version</td><td>Planned Features</td><td>Release Date</td>
+            <td>Version</td><td>Description</td><td>Release Date</td>
         </tr>
         <tr>
             <td>V1.0.0</td>
-            <td>Initial Release | stabilization and documantation overhaul</td>
+            <td>Initial Release | stabilization and documentation overhaul</td>
             <td>Coming Soon</td>
+        </tr>
+        <tr>
+            <td>0.7.51-alpha</td>
+            <td>pre release alpha version | In active development</td>
+            <td>2026-05-03</td>
         </tr>
     </table>
 </center>

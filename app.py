@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk
+from tkinter import font as tkfont
 import json
 import datetime
 from CTkMessagebox import CTkMessagebox
@@ -222,50 +223,69 @@ class ManageConnectionsWindow(ctk.CTkToplevel):
 
 
 class AddEditDataWindow(ctk.CTkToplevel):
-    def __init__(self, master, active_connector, item_name, is_collection, columns, initial_data=None, mode="add"):
+    def __init__(self, master, active_connector, item_name, is_collection, columns,
+                 initial_data=None, mode="add", auto_fill=None):
         super().__init__(master)
         self.lift()
         self.focus_force()
         self.grab_set()
         self.title(f"{mode.capitalize()} Data: {item_name}")
-        self.geometry("500x" + str(100 + len(columns) * 40))
         self.active_connector = active_connector
         self.item_name = item_name
         self.is_collection = is_collection
         self.columns = columns
         self.initial_data = initial_data
         self.mode = mode
-        self.entry_widgets = {}
+        self.auto_fill = auto_fill or {}
+        self.entry_widgets = {}  # col_name -> CTkEntry | CTkLabel | None (identity)
 
         self.grid_columnconfigure(1, weight=1)
 
-        for i, col_name in enumerate(self.columns):
-            if col_name == "_id" and self.is_collection and self.mode == "add": # MongoDB _id is auto-generated
+        row = 0
+        for col_name in self.columns:
+            # MongoDB _id in add mode: skip entirely
+            if col_name == "_id" and self.is_collection and self.mode == "add":
+                self.entry_widgets[col_name] = None
                 continue
-            if col_name == "_id" and self.is_collection and self.mode == "edit": # MongoDB _id is not editable
-                ctk.CTkLabel(self, text=f"{col_name}:").grid(row=i, column=0, padx=10, pady=5, sticky="w")
-                label = ctk.CTkLabel(self, text=str(initial_data.get(col_name, "")))
-                label.grid(row=i, column=1, padx=10, pady=5, sticky="ew")
-                self.entry_widgets[col_name] = label # Store label for consistency, though not editable
+            # MongoDB _id in edit mode: show read-only label
+            if col_name == "_id" and self.is_collection and self.mode == "edit":
+                ctk.CTkLabel(self, text=f"{col_name}:").grid(row=row, column=0, padx=10, pady=5, sticky="w")
+                lbl = ctk.CTkLabel(self, text=str(initial_data.get(col_name, "")))
+                lbl.grid(row=row, column=1, padx=10, pady=5, sticky="ew")
+                self.entry_widgets[col_name] = lbl
+                row += 1
+                continue
+            # IDENTITY column in add mode: skip field; DB generates the value
+            if self.mode == "add" and self.auto_fill.get(col_name) is None and col_name in self.auto_fill:
+                self.entry_widgets[col_name] = None
                 continue
 
-            ctk.CTkLabel(self, text=f"{col_name}:").grid(row=i, column=0, padx=10, pady=5, sticky="w")
+            ctk.CTkLabel(self, text=f"{col_name}:").grid(row=row, column=0, padx=10, pady=5, sticky="w")
             entry = ctk.CTkEntry(self)
-            entry.grid(row=i, column=1, padx=10, pady=5, sticky="ew")
+            entry.grid(row=row, column=1, padx=10, pady=5, sticky="ew")
             self.entry_widgets[col_name] = entry
 
-            if self.mode == "edit" and initial_data and col_name != "_id": # Pre-fill for edit mode, skip _id
+            if self.mode == "add" and col_name in self.auto_fill:
+                # Auto-fill: pre-populate and lock the field
+                entry.insert(0, str(self.auto_fill[col_name]))
+                entry.configure(state="disabled")
+            elif self.mode == "edit" and initial_data and col_name != "_id":
                 entry.insert(0, str(initial_data.get(col_name, "")))
 
+            row += 1
+
+        self.geometry("500x" + str(80 + row * 50))
         save_button = ctk.CTkButton(self, text="Save", command=self._save_data)
-        save_button.grid(row=len(self.columns), column=0, columnspan=2, padx=10, pady=20, sticky="ew")
+        save_button.grid(row=row, column=0, columnspan=2, padx=10, pady=16, sticky="ew")
 
     def _save_data(self):
         data = {}
         for col_name, widget in self.entry_widgets.items():
+            if widget is None:
+                continue  # IDENTITY / skipped column
             if isinstance(widget, ctk.CTkEntry):
                 data[col_name] = widget.get()
-            elif isinstance(widget, ctk.CTkLabel): # For non-editable _id
+            elif isinstance(widget, ctk.CTkLabel):
                 data[col_name] = widget.cget("text")
 
         success = False
@@ -274,24 +294,18 @@ class AddEditDataWindow(ctk.CTkToplevel):
         if self.mode == "add":
             success, message = self.active_connector.insert_data(self.item_name, data)
         elif self.mode == "edit":
-            # For simplicity, assuming the first column is the primary key for SQL, or _id for MongoDB
             condition = {}
             if self.is_collection:
-                # MongoDB uses _id for unique identification
                 condition["_id"] = self.initial_data["_id"]
             else:
-                # For SQL, assume the first column is the primary key for update condition
                 pk_col = self.columns[0]
                 condition[pk_col] = self.initial_data[pk_col]
-            
-            # Remove the primary key from data to be updated if it's present
-            if pk_col in data and not self.is_collection: # For SQL
+            if pk_col in data and not self.is_collection:
                 del data[pk_col]
-            if "_id" in data and self.is_collection: # For MongoDB
+            if "_id" in data and self.is_collection:
                 del data["_id"]
-
             success, message = self.active_connector.update_data(self.item_name, data, condition)
-        
+
         if success:
             self.master._refresh_inline_table()
             self.destroy()
@@ -309,23 +323,30 @@ class AddTableDialog(ctk.CTkToplevel):
         self.focus_force()
         self.grab_set()
         self.title("Add Table")
-        self.geometry("560x560")
+        self.geometry("600x580")
         self.active_connector = active_connector
-        self._col_rows = []  # list of dicts
+        self._col_rows = []
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(1, weight=1)
 
-        ctk.CTkLabel(self, text="Table Name:").grid(row=0, column=0, padx=10, pady=(12, 2), sticky="w")
-        self.name_entry = ctk.CTkEntry(self)
-        self.name_entry.grid(row=1, column=0, padx=10, pady=(0, 8), sticky="ew")
+        # Table name header (matches EditTableDialog style)
+        name_row = ctk.CTkFrame(self, fg_color="transparent")
+        name_row.grid(row=0, column=0, padx=10, pady=(12, 4), sticky="ew")
+        name_row.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(name_row, text="Table Name:", font=ctk.CTkFont(weight="bold")).grid(
+            row=0, column=0, padx=(0, 8), sticky="w")
+        self.name_entry = ctk.CTkEntry(name_row, placeholder_text="table_name")
+        self.name_entry.grid(row=0, column=1, sticky="ew")
 
         self.cols_frame = ctk.CTkScrollableFrame(self, label_text="Columns")
-        self.cols_frame.grid(row=2, column=0, padx=10, pady=4, sticky="nsew")
+        self.cols_frame.grid(row=1, column=0, padx=10, pady=4, sticky="nsew")
         self.cols_frame.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkButton(self, text="+ Add Column", command=self._add_col_row).grid(row=3, column=0, padx=10, pady=4, sticky="ew")
-        ctk.CTkButton(self, text="Create Table", command=self._create_table).grid(row=4, column=0, padx=10, pady=(4, 12), sticky="ew")
+        ctk.CTkButton(self, text="+ Add Column", command=self._add_col_row).grid(
+            row=2, column=0, padx=10, pady=4, sticky="ew")
+        ctk.CTkButton(self, text="Create Table", command=self._create_table).grid(
+            row=3, column=0, padx=10, pady=(4, 12), sticky="ew")
 
         self._add_col_row()
 
@@ -336,7 +357,6 @@ class AddTableDialog(ctk.CTkToplevel):
         outer.grid(row=idx, column=0, padx=0, pady=(2, 6), sticky="ew")
         outer.grid_columnconfigure(0, weight=1)
 
-        # Row 1: name, type, remove button
         row1 = ctk.CTkFrame(outer, fg_color="transparent")
         row1.grid(row=0, column=0, sticky="ew")
         row1.grid_columnconfigure(0, weight=1)
@@ -345,34 +365,37 @@ class AddTableDialog(ctk.CTkToplevel):
         name_entry.grid(row=0, column=0, padx=(0, 4), sticky="ew")
 
         type_var = ctk.StringVar(value=COLUMN_TYPES[0])
-        ctk.CTkOptionMenu(row1, values=COLUMN_TYPES, variable=type_var, width=130).grid(row=0, column=1, padx=(0, 4))
+        ctk.CTkOptionMenu(row1, values=COLUMN_TYPES, variable=type_var, width=140).grid(
+            row=0, column=1, padx=(0, 4))
 
-        # Row 2: checkboxes
+        # Row 2: identical layout to EditTableDialog
         row2 = ctk.CTkFrame(outer, fg_color="transparent")
         row2.grid(row=1, column=0, sticky="ew", pady=(2, 0))
 
-        pk_var   = ctk.BooleanVar(value=False)
-        rand_var = ctk.BooleanVar(value=False)
-        auto_var = ctk.BooleanVar(value=False)
+        pk_var     = ctk.BooleanVar(value=False)
+        auto_var   = ctk.BooleanVar(value=False)
+        rand_var   = ctk.BooleanVar(value=False)
+        unique_var = ctk.BooleanVar(value=False)
 
-        max_label  = ctk.CTkLabel(row2, text="Max chars:")
-        max_entry  = ctk.CTkEntry(row2, width=65, placeholder_text="36")
+        len_label = ctk.CTkLabel(row2, text="Length:")
+        len_entry = ctk.CTkEntry(row2, width=55, placeholder_text="6")
 
         def on_rand_toggle():
             if rand_var.get():
-                max_label.grid(row=0, column=2, padx=(10, 2))
-                max_entry.grid(row=0, column=3, padx=(0, 10))
+                len_label.grid(row=0, column=3, padx=(8, 2))
+                len_entry.grid(row=0, column=4, padx=(0, 8))
             else:
-                max_label.grid_remove()
-                max_entry.grid_remove()
+                len_label.grid_remove()
+                len_entry.grid_remove()
 
-        ctk.CTkCheckBox(row2, text="Primary Key",  variable=pk_var,   width=110).grid(row=0, column=0, padx=(0, 6))
-        ctk.CTkCheckBox(row2, text="Random Gen",   variable=rand_var, width=105, command=on_rand_toggle).grid(row=0, column=1)
-        ctk.CTkCheckBox(row2, text="Auto Fill",    variable=auto_var, width=85).grid(row=0, column=4, padx=(10, 0))
+        ctk.CTkCheckBox(row2, text="PK",     variable=pk_var,     width=55).grid(row=0, column=0, padx=(0, 4))
+        ctk.CTkCheckBox(row2, text="Auto",   variable=auto_var,   width=65).grid(row=0, column=1, padx=(0, 4))
+        ctk.CTkCheckBox(row2, text="Rand",   variable=rand_var,   width=65, command=on_rand_toggle).grid(row=0, column=2)
+        ctk.CTkCheckBox(row2, text="Unique", variable=unique_var, width=75).grid(row=0, column=5, padx=(10, 0))
 
         entry = {"name_entry": name_entry, "type_var": type_var,
-                 "pk_var": pk_var, "rand_var": rand_var,
-                 "max_entry": max_entry, "auto_var": auto_var, "frame": outer}
+                 "pk_var": pk_var, "auto_var": auto_var, "rand_var": rand_var,
+                 "max_entry": len_entry, "unique_var": unique_var, "frame": outer}
 
         def do_remove(e=entry, f=outer):
             self._col_rows[:] = [x for x in self._col_rows if x is not e]
@@ -394,17 +417,18 @@ class AddTableDialog(ctk.CTkToplevel):
             name = e["name_entry"].get().strip()
             if not name:
                 continue
-            col_type = e["type_var"].get()
+            col_type   = e["type_var"].get()
+            unique_sql = " UNIQUE" if e["unique_var"].get() else ""
 
             if e["rand_var"].get():
                 expr = _rand_default_sql(col_type, e["max_entry"].get().strip())
-                col_def = f'"{name}" {col_type} DEFAULT {expr}'
+                col_def = f'"{name}" {col_type} DEFAULT {expr}{unique_sql}'
             elif e["auto_var"].get() and col_type == "INTEGER":
-                col_def = f'"{name}" INTEGER GENERATED ALWAYS AS IDENTITY'
+                col_def = f'"{name}" INTEGER GENERATED ALWAYS AS IDENTITY{unique_sql}'
             elif e["auto_var"].get() and col_type in ("TIMESTAMP", "DATE"):
-                col_def = f'"{name}" {col_type} DEFAULT CURRENT_TIMESTAMP'
+                col_def = f'"{name}" {col_type} DEFAULT CURRENT_TIMESTAMP{unique_sql}'
             else:
-                col_def = f'"{name}" {col_type}'
+                col_def = f'"{name}" {col_type}{unique_sql}'
 
             col_defs.append(col_def)
             if e["pk_var"].get():
@@ -419,12 +443,12 @@ class AddTableDialog(ctk.CTkToplevel):
 
         cols_sql = ", ".join(col_defs)
         query = f'CREATE TABLE "{table_name}" ({cols_sql});'
-        success, result = self.active_connector.execute_query(query)
-        if success:
+        ok, result = self.active_connector.execute_query(query)
+        if ok:
             self.destroy()
             self.master._refresh_schema()
         else:
-            CTkMessagebox(title="Error", message=f"Failed to create table: {result}", icon="cancel", option_1="Ok")
+            CTkMessagebox(title="Error", message=f"Failed to create table:\n{result}", icon="cancel", option_1="Ok")
 
 
 class AddColumnDialog(ctk.CTkToplevel):
@@ -484,38 +508,41 @@ _SCHEMA_TYPE_MAP = {
 }
 
 
-def _rand_default_sql(col_type: str, max_val: str) -> str:
-    """Return a PostgreSQL DEFAULT expression for a random value appropriate to col_type.
-    max_val is the raw string from the Max entry (chars for text, digits for numbers)."""
+def _rand_default_sql(col_type: str, length: str) -> str:
+    """Return a PostgreSQL DEFAULT expression producing exactly `length` chars/digits."""
     try:
-        n = max(1, int(max_val))
+        n = max(1, int(length))
     except (ValueError, TypeError):
-        n = 36
-    text_types = {"TEXT", "VARCHAR(255)"}
-    int_types  = {"INTEGER"}
+        n = 6
+    text_types  = {"TEXT", "VARCHAR(255)"}
+    int_types   = {"INTEGER"}
     float_types = {"REAL", "NUMERIC", "MONEY"}
     bool_types  = {"BOOLEAN"}
     date_types  = {"DATE"}
     ts_types    = {"TIMESTAMP"}
     if col_type in text_types:
-        return f"substring(md5(random()::text) from 1 for {n})"
+        # md5 always produces 32 hex chars, so substring is exactly n chars
+        return f"substring(md5(random()::text) from 1 for {min(n, 32)})"
     if col_type in int_types:
-        upper = 10 ** n
-        return f"floor(random() * {upper})::integer"
+        # range [10^(n-1), 10^n - 1] — always exactly n digits
+        low  = 10 ** (n - 1)
+        high = 9 * (10 ** (n - 1))
+        return f"(floor(random() * {high}) + {low})::integer"
     if col_type in float_types:
-        upper = 10 ** n
-        return f"round((random() * {upper})::numeric, 2)"
+        low  = 10 ** (n - 1)
+        high = 9 * (10 ** (n - 1))
+        return f"round((random() * {high} + {low})::numeric, 2)"
     if col_type in bool_types:
         return "(random() > 0.5)"
     if col_type in date_types:
         return f"(current_date - (random() * {n * 30})::integer)"
     if col_type in ts_types:
         return f"(now() - (random() * interval '{n * 30} days'))"
-    return f"substring(md5(random()::text) from 1 for {n})"
+    return f"substring(md5(random()::text) from 1 for {min(n, 32)})"
 
 
 def _parse_rand_max(col_default: str, col_type: str) -> str:
-    """Try to recover the 'max' number from an existing rand DEFAULT expression."""
+    """Recover the length number from a rand DEFAULT expression."""
     import re, math
     if not col_default:
         return "6"
@@ -523,17 +550,61 @@ def _parse_rand_max(col_default: str, col_type: str) -> str:
     m = re.search(r"for (\d+)\)", col_default)
     if m:
         return m.group(1)
-    # INTEGER: floor(random() * N)::integer
+    # Exact-N integer/numeric: (floor(random() * high) + low)::...
+    # low = 10^(n-1), so n = floor(log10(low)) + 1
+    m = re.search(r"\) \+ (\d+)\)", col_default)
+    if m:
+        try:
+            low = int(m.group(1))
+            return str(int(math.floor(math.log10(low))) + 1) if low > 0 else "6"
+        except Exception:
+            return "6"
+    # Legacy: floor(random() * N)::integer  — N = 10^n
     m = re.search(r"random\(\) \* (\d+)", col_default)
     if m:
         try:
             n = int(m.group(1))
-            digits = int(round(math.log10(n))) if n > 1 else 1
-            return str(digits)
+            return str(int(round(math.log10(n)))) if n > 1 else "1"
         except Exception:
             return "6"
-    # BOOLEAN / DATE / TIMESTAMP — no meaningful "max" to recover
     return "6"
+
+
+def _generate_rand_value_py(col_default: str) -> str:
+    """Generate a Python-side random value matching a DB DEFAULT expression."""
+    import re as _re, random as _rng, hashlib as _hs, datetime as _dt, math as _math
+    if not col_default:
+        return ""
+    d = col_default.lower()
+    if "current_timestamp" in d or "now()" in d:
+        return _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if "random()" not in d:
+        return col_default
+    # TEXT: substring(md5(random()::text) from 1 for N)
+    m = _re.search(r"for (\d+)\)", col_default, _re.IGNORECASE)
+    if m:
+        n = int(m.group(1))
+        return _hs.md5(str(_rng.random()).encode()).hexdigest()[:n]
+    # Exact integer/numeric: (floor(random() * high) + low)
+    m = _re.search(r"random\(\) \* (\d+)\) \+ (\d+)", col_default)
+    if m:
+        high, low = int(m.group(1)), int(m.group(2))
+        return str(_rng.randint(low, low + high - 1))
+    # Exact numeric (no parens before +): random() * high + low
+    m = _re.search(r"random\(\) \* (\d+) \+ (\d+)", col_default)
+    if m:
+        high, low = int(m.group(1)), int(m.group(2))
+        return str(round(_rng.uniform(low, low + high), 2))
+    # BOOLEAN
+    if "random() > 0.5" in d:
+        return str(_rng.random() > 0.5)
+    # DATE/TIMESTAMP: random() * N days
+    m = _re.search(r"random\(\) \* (\d+)", col_default)
+    if m:
+        days = int(m.group(1))
+        offset = _rng.randint(0, days)
+        return (_dt.date.today() - _dt.timedelta(days=offset)).strftime("%Y-%m-%d")
+    return ""
 
 
 class EditTableDialog(ctk.CTkToplevel):
@@ -549,6 +620,8 @@ class EditTableDialog(ctk.CTkToplevel):
         self._original_cols = {col["name"]: col["type"] for col in columns}
         self._original_unique_map  = active_connector.fetch_unique_columns(table_name)
         self._col_defaults         = active_connector.fetch_column_defaults(table_name)
+        pk_list, self._pk_constraint_name = active_connector.fetch_primary_keys(table_name)
+        self._pk_cols_set = set(pk_list)
         self._col_rows = []
 
         self.grid_columnconfigure(0, weight=1)
@@ -570,14 +643,15 @@ class EditTableDialog(ctk.CTkToplevel):
             d = self._col_defaults.get(col["name"], {})
             col_default  = d.get("default") or ""
             is_identity  = d.get("is_identity", False)
-            is_auto      = is_identity or ("CURRENT_TIMESTAMP" in col_default.upper())
             is_rand      = "random()" in col_default.lower()
+            is_auto      = is_identity or ("CURRENT_TIMESTAMP" in col_default.upper()) or is_rand
             rand_max     = _parse_rand_max(col_default, col["type"]) if is_rand else ""
             self._add_col_row(col["name"], col["type"],
+                              is_pk=col["name"] in self._pk_cols_set,
                               is_unique=col["name"] in self._original_unique_map,
                               is_auto=is_auto, is_rand=is_rand, rand_max=rand_max)
 
-    def _add_col_row(self, name="", col_type="", is_unique=False, is_auto=False, is_rand=False, rand_max=""):
+    def _add_col_row(self, name="", col_type="", is_pk=False, is_unique=False, is_auto=False, is_rand=False, rand_max=""):
         idx = len(self._col_rows)
 
         outer = ctk.CTkFrame(self.cols_frame, fg_color="transparent")
@@ -602,40 +676,42 @@ class EditTableDialog(ctk.CTkToplevel):
         ctk.CTkOptionMenu(row1, values=options, variable=type_var, width=140).grid(
             row=0, column=1, padx=(0, 4))
 
-        # Row 2: Auto, Rand, Unique checkboxes
+        # Row 2: PK, Auto, Rand, Length, Unique checkboxes
         row2 = ctk.CTkFrame(outer, fg_color="transparent")
         row2.grid(row=1, column=0, sticky="ew", pady=(2, 0))
 
+        pk_var     = ctk.BooleanVar(value=is_pk)
         auto_var   = ctk.BooleanVar(value=is_auto)
         rand_var   = ctk.BooleanVar(value=is_rand)
         unique_var = ctk.BooleanVar(value=is_unique)
 
-        max_label = ctk.CTkLabel(row2, text="Max chars:")
-        max_entry = ctk.CTkEntry(row2, width=65, placeholder_text="36")
+        len_label = ctk.CTkLabel(row2, text="Length:")
+        len_entry = ctk.CTkEntry(row2, width=55, placeholder_text="6")
         if rand_max:
-            max_entry.insert(0, rand_max)
+            len_entry.insert(0, rand_max)
 
         def on_rand_toggle():
             if rand_var.get():
-                max_label.grid(row=0, column=2, padx=(10, 2))
-                max_entry.grid(row=0, column=3, padx=(0, 10))
+                len_label.grid(row=0, column=3, padx=(8, 2))
+                len_entry.grid(row=0, column=4, padx=(0, 8))
             else:
-                max_label.grid_remove()
-                max_entry.grid_remove()
+                len_label.grid_remove()
+                len_entry.grid_remove()
 
-        ctk.CTkCheckBox(row2, text="Auto",   variable=auto_var,   width=70).grid(row=0, column=0, padx=(0, 6))
-        ctk.CTkCheckBox(row2, text="Rand",   variable=rand_var,   width=70, command=on_rand_toggle).grid(row=0, column=1)
-        ctk.CTkCheckBox(row2, text="Unique", variable=unique_var, width=80).grid(row=0, column=4, padx=(10, 0))
+        ctk.CTkCheckBox(row2, text="PK",     variable=pk_var,     width=55).grid(row=0, column=0, padx=(0, 4))
+        ctk.CTkCheckBox(row2, text="Auto",   variable=auto_var,   width=65).grid(row=0, column=1, padx=(0, 4))
+        ctk.CTkCheckBox(row2, text="Rand",   variable=rand_var,   width=65, command=on_rand_toggle).grid(row=0, column=2)
+        ctk.CTkCheckBox(row2, text="Unique", variable=unique_var, width=75).grid(row=0, column=5, padx=(10, 0))
 
-        # Show max_label/max_entry immediately if rand is pre-populated
+        # Show length field immediately if rand is pre-populated
         if is_rand:
-            max_label.grid(row=0, column=2, padx=(10, 2))
-            max_entry.grid(row=0, column=3, padx=(0, 10))
+            len_label.grid(row=0, column=3, padx=(8, 2))
+            len_entry.grid(row=0, column=4, padx=(0, 8))
 
         entry = {"orig_name": name or None, "orig_type": col_type or None,
                  "name_entry": name_entry, "type_var": type_var,
-                 "auto_var": auto_var, "rand_var": rand_var,
-                 "max_entry": max_entry, "unique_var": unique_var, "frame": outer}
+                 "pk_var": pk_var, "auto_var": auto_var, "rand_var": rand_var,
+                 "max_entry": len_entry, "unique_var": unique_var, "frame": outer}
 
         def remove(e=entry, f=outer):
             self._col_rows[:] = [x for x in self._col_rows if x is not e]
@@ -680,8 +756,9 @@ class EditTableDialog(ctk.CTkToplevel):
                 if not ok:
                     errors.append(f"Change type of '{effective_name}': {msg}")
 
-            # Auto default
-            if e["auto_var"].get():
+            # Auto default — only applies when Rand is NOT also checked
+            # (if Rand is checked, the random() expression IS the auto default)
+            if e["auto_var"].get() and not e["rand_var"].get():
                 if new_type == "INTEGER":
                     default_expr = "0"
                 elif new_type in ("TIMESTAMP", "DATE"):
@@ -733,6 +810,29 @@ class EditTableDialog(ctk.CTkToplevel):
             ok, msg = self.active_connector.execute_query(q)
             if not ok:
                 errors.append(f"Add '{col_name}': {msg}")
+
+        # Primary key changes
+        new_pk_effective = []
+        for e in self._col_rows:
+            if not e["pk_var"].get():
+                continue
+            new_name = e["name_entry"].get().strip()
+            if not new_name:
+                continue
+            orig = e["orig_name"]
+            new_pk_effective.append(effective_names.get(orig, orig) if orig else new_name)
+        if set(new_pk_effective) != self._pk_cols_set:
+            if self._pk_constraint_name:
+                q = f'ALTER TABLE "{self.table_name}" DROP CONSTRAINT "{self._pk_constraint_name}";'
+                ok, msg = self.active_connector.execute_query(q)
+                if not ok:
+                    errors.append(f"Drop PRIMARY KEY: {msg}")
+            if new_pk_effective:
+                cols_sql = ", ".join(f'"{c}"' for c in new_pk_effective)
+                q = f'ALTER TABLE "{self.table_name}" ADD PRIMARY KEY ({cols_sql});'
+                ok, msg = self.active_connector.execute_query(q)
+                if not ok:
+                    errors.append(f"Set PRIMARY KEY: {msg}")
 
         # Unique constraint changes
         for e in self._col_rows:
@@ -823,11 +923,82 @@ class DeleteColumnDialog(ctk.CTkToplevel):
                 CTkMessagebox(title="Error", message=f"Failed to drop column: {result}", icon="cancel", option_1="Ok")
 
 
+class QueryWindow(ctk.CTkToplevel):
+    def __init__(self, master):
+        super().__init__(master)
+        self.title("Query Editor")
+        self.geometry("900x620")
+        self.lift()
+        self.focus_force()
+
+        self.grid_rowconfigure(1, weight=2)
+        self.grid_rowconfigure(4, weight=3)
+        self.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(self, text="SQL / Query Editor:", anchor="w").grid(
+            row=0, column=0, padx=10, pady=(10, 2), sticky="ew")
+        self.query_editor = ctk.CTkTextbox(self, height=200, wrap="none")
+        self.query_editor.grid(row=1, column=0, padx=10, pady=(0, 4), sticky="nsew")
+
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        btn_frame.grid(row=2, column=0, padx=10, pady=(0, 4), sticky="ew")
+        btn_frame.grid_columnconfigure(2, weight=1)
+        ctk.CTkButton(btn_frame, text="Execute", width=120, command=self._execute).grid(
+            row=0, column=0, padx=(0, 6))
+        ctk.CTkButton(btn_frame, text="Clear", width=80,
+                      fg_color="transparent", border_width=1, command=self._clear).grid(
+            row=0, column=1)
+
+        ctk.CTkLabel(self, text="Results:", anchor="w").grid(
+            row=3, column=0, padx=10, pady=(4, 2), sticky="ew")
+        self.results_box = ctk.CTkTextbox(self, wrap="none")
+        self.results_box.grid(row=4, column=0, padx=10, pady=(0, 10), sticky="nsew")
+        self.results_box.configure(state="disabled")
+
+    def _execute(self):
+        connector = self.master.active_connector
+        if not connector:
+            self._show("Error: Not connected to any database.")
+            return
+        query = self.query_editor.get("1.0", "end").strip()
+        if not query:
+            self._show("Error: Query cannot be empty.")
+            return
+        self._show("Executing query…\n")
+        success, result = connector.execute_query(query)
+        if success:
+            if isinstance(result, dict) and "rows" in result and "columns" in result:
+                cols = result["columns"]
+                rows = result["rows"]
+                header = " | ".join(cols)
+                lines = [header, "-" * len(header)]
+                lines += [" | ".join(map(str, r)) for r in rows]
+                self._show("\n".join(lines))
+            elif isinstance(result, dict) and "message" in result:
+                self._show(result["message"])
+            else:
+                self._show(str(result))
+            query_upper = query.upper()
+            if any(kw in query_upper for kw in ["CREATE", "ALTER", "DROP", "RENAME", "TRUNCATE"]):
+                self.master._refresh_schema()
+        else:
+            self._show(f"Error: {result}")
+
+    def _clear(self):
+        self.query_editor.delete("1.0", "end")
+
+    def _show(self, text: str):
+        self.results_box.configure(state="normal")
+        self.results_box.delete("1.0", "end")
+        self.results_box.insert("end", text)
+        self.results_box.configure(state="disabled")
+
+
 class DBManagerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("DB Manager GUI")
+        self.title("BaseCrawler 0.7.51-alpha")
         self.geometry("1000x700")
 
         self.connection_manager = ConnectionManager()
@@ -841,16 +1012,24 @@ class DBManagerApp(ctk.CTk):
         self.last_connection_status = None
         self._status_stop_event = threading.Event()
         self._status_thread = None
+        self.connect_button = None
+        self._user_entry = None
+        self._pw_entry = None
+        self._save_pw_var = None
 
         self._open_table_name = None
         self._open_table_is_collection = False
         self._table_data_columns = []
         self._table_data_rows = []
+        self._table_col_defaults = {}
         self._is_mongodb = False
         self._last_schema = None
-        self._gridlines_on = False
+        self._connection_states = {}   # {conn_name: {open_table, is_collection, schema, db_type}}
+        self._gridlines_on = True
         self._cell_editor = None
         self._col_sep_frames = []
+        self._auto_refresh_id = None
+        self._col_widths = {}  # {(table_name, col_name): pixel_width}
 
         # Configure grid layout (2x1)
         self.grid_rowconfigure(0, weight=1)
@@ -874,64 +1053,113 @@ class DBManagerApp(ctk.CTk):
         # Right Pane (Workspace)
         self.workspace_frame = ctk.CTkFrame(self, corner_radius=0)
         self.workspace_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
-        self.workspace_frame.grid_rowconfigure(0, weight=1)
+        self.workspace_frame.grid_rowconfigure(0, weight=0)  # top bar
+        self.workspace_frame.grid_rowconfigure(1, weight=1)  # main content
         self.workspace_frame.grid_columnconfigure(0, weight=1)
 
+        # ── Top bar (sidebar toggle + edit mode) ─────────────────────────────
+        self._sidebar_visible = True
+        self._edit_mode = True
+        topbar = ctk.CTkFrame(self.workspace_frame, height=36, fg_color="transparent")
+        topbar.grid(row=0, column=0, sticky="ew", padx=4, pady=(4, 0))
+        topbar.grid_columnconfigure(1, weight=1)
+
+        self._sidebar_btn = ctk.CTkButton(topbar, text="◀ Hide Panel", width=110, height=28,
+                                          command=self._toggle_sidebar)
+        self._sidebar_btn.grid(row=0, column=0, padx=(0, 8))
+
+        self._grid_cb = ctk.CTkCheckBox(topbar, text="⊞", width=50,
+                                        command=self._toggle_gridlines)
+        self._grid_cb.select()               # grid on by default
+        self._grid_cb.grid(row=0, column=2, padx=(0, 4))
+
+        self._edit_mode_cb = ctk.CTkCheckBox(topbar, text="✏", width=50,
+                                             command=self._apply_edit_mode)
+        self._edit_mode_cb.select()          # edit mode on by default
+        self._edit_mode_cb.grid(row=0, column=3, padx=(0, 8))
+
         # Connection Info Display Frame (initially visible, replaces welcome label)
-        self.connection_info_frame = ctk.CTkFrame(self.workspace_frame)
-        self.connection_info_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.connection_info_frame = ctk.CTkFrame(self.workspace_frame, fg_color="transparent")
+        self.connection_info_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
         self.connection_info_frame.grid_columnconfigure(0, weight=1)
-        self.connection_info_frame.grid_rowconfigure(99, weight=1) # Push connect button to bottom
+        self.connection_info_frame.grid_rowconfigure(0, weight=1)
 
-        # Frame to hold dynamic connection details labels
-        self.connection_details_display_frame = ctk.CTkFrame(self.connection_info_frame)
-        self.connection_details_display_frame.grid(row=0, column=0, padx=0, pady=0, sticky="nsew")
+        # Dynamic content area — rebuilt each time a connection is selected
+        self.connection_details_display_frame = ctk.CTkFrame(self.connection_info_frame, fg_color="transparent")
+        self.connection_details_display_frame.grid(row=0, column=0, sticky="nsew")
         self.connection_details_display_frame.grid_columnconfigure(0, weight=1)
+        self.connection_details_display_frame.grid_rowconfigure(0, weight=1)
 
-        ctk.CTkLabel(self.connection_details_display_frame, text="Select a connection from the left panel or manage connections.", font=ctk.CTkFont(size=16)).grid(row=0, column=0, padx=20, pady=20)
-        
-        self.connect_button = ctk.CTkButton(self.connection_info_frame, text="Connect", command=self._connect_selected_db) # Connect button for selected info
-        self.connect_button.grid(row=100, column=0, padx=20, pady=20, sticky="s")
-        self.connect_button.grid_remove() # Hide initially
+        ctk.CTkLabel(self.connection_details_display_frame,
+                     text="Select a connection from the left panel or manage connections.",
+                     font=ctk.CTkFont(size=16)).grid(row=0, column=0, padx=20, pady=20)
 
-        # Workspace Tabview (initially hidden)
-        self.workspace_tabview = ctk.CTkTabview(self.workspace_frame)
-        self.workspace_tabview.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-        self.workspace_tabview.grid_remove() # Hide initially
+        # Workspace panel (initially hidden, replaces old tabview)
+        self.workspace_panel = ctk.CTkFrame(self.workspace_frame, fg_color="transparent")
+        self.workspace_panel.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        self.workspace_panel.grid_remove()
 
-        # Schema Tab
-        self.schema_tab = self.workspace_tabview.add("Schema")
+        self.schema_tab = self.workspace_panel
         self.schema_tab.grid_rowconfigure(1, weight=1)
         self.schema_tab.grid_columnconfigure(0, weight=1)
 
-        # Toolbar shown when browsing the table/collection list
-        self.schema_toolbar = ctk.CTkFrame(self.schema_tab)
-        self.schema_toolbar.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 0))
-        self.schema_toolbar.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)
-        ctk.CTkButton(self.schema_toolbar, text="Refresh", command=self._refresh_schema).grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-        self._btn_open_table = ctk.CTkButton(self.schema_toolbar, text="Open Table", command=self._open_selected_table)
-        self._btn_open_table.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-        self._btn_edit_table = ctk.CTkButton(self.schema_toolbar, text="Edit Table", command=self._edit_selected_table)
-        self._btn_edit_table.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
-        self._btn_add_table = ctk.CTkButton(self.schema_toolbar, text="Add Table", command=self._add_table)
-        self._btn_add_table.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
-        self._btn_del_table = ctk.CTkButton(self.schema_toolbar, text="Delete Table", command=self._delete_selected_table)
-        self._btn_del_table.grid(row=0, column=4, padx=5, pady=5, sticky="ew")
+        # ── Schema ribbon toolbar (table list view) ───────────────────────────
+        self.schema_toolbar = ctk.CTkFrame(self.schema_tab, height=72, corner_radius=0)
+        self.schema_toolbar.grid(row=0, column=0, sticky="ew", padx=0, pady=(0, 0))
+        self.schema_toolbar.pack_propagate(False)
 
-        # Toolbar shown when a table is open inline
-        self.table_toolbar = ctk.CTkFrame(self.schema_tab)
-        self.table_toolbar.grid_columnconfigure((0, 1, 2, 3, 4, 5, 6, 7), weight=1)
-        ctk.CTkButton(self.table_toolbar, text="← Back", command=self._show_schema_view).grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-        ctk.CTkButton(self.table_toolbar, text="Refresh", command=self._refresh_inline_table).grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-        self._btn_gridlines = ctk.CTkButton(self.table_toolbar, text="Grid: Off", command=self._toggle_gridlines)
-        self._btn_gridlines.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
-        ctk.CTkButton(self.table_toolbar, text="Add Row", command=self._add_row_inline).grid(row=0, column=3, padx=5, pady=5, sticky="ew")
-        ctk.CTkButton(self.table_toolbar, text="Edit Row", command=self._edit_row_inline).grid(row=0, column=4, padx=5, pady=5, sticky="ew")
-        ctk.CTkButton(self.table_toolbar, text="Delete Row", command=self._delete_row_inline).grid(row=0, column=5, padx=5, pady=5, sticky="ew")
-        self._btn_add_col = ctk.CTkButton(self.table_toolbar, text="Add Column", command=self._add_column)
-        self._btn_add_col.grid(row=0, column=6, padx=5, pady=5, sticky="ew")
-        self._btn_del_col = ctk.CTkButton(self.table_toolbar, text="Delete Column", command=self._delete_column)
-        self._btn_del_col.grid(row=0, column=7, padx=5, pady=5, sticky="ew")
+        [self._btn_open_table] = self._ribbon_group(
+            self.schema_toolbar, "View",
+            [("▶", "Open", self._open_selected_table)],
+        )
+        self._ribbon_sep(self.schema_toolbar)
+        self._btn_edit_table, self._btn_add_table, self._btn_del_table = self._ribbon_group(
+            self.schema_toolbar, "Tables", [
+                ("✎", "Edit",   self._edit_selected_table),
+                ("⊕", "Add",    self._add_table),
+                ("⊗", "Delete", self._delete_selected_table),
+            ],
+        )
+        self._ribbon_sep(self.schema_toolbar)
+        self._ribbon_group(
+            self.schema_toolbar, "Query",
+            [("≡", "SQL", self._open_query_wizard)],
+        )
+        self._ribbon_sep(self.schema_toolbar)
+        [disc_btn] = self._ribbon_group(
+            self.schema_toolbar, "Connection",
+            [("⏻", "Disconnect", self._disconnect_db)],
+        )
+        disc_btn.configure(text_color="#DD4444")
+
+        # ── Table ribbon toolbar (inline data view) ───────────────────────────
+        self.table_toolbar = ctk.CTkFrame(self.schema_tab, height=72, corner_radius=0)
+        self.table_toolbar.pack_propagate(False)
+
+        self._ribbon_group(
+            self.table_toolbar, "Navigate",
+            [("◀", "Back", self._show_schema_view)],
+        )
+        self._ribbon_sep(self.table_toolbar)
+        self._btn_add_row, self._btn_edit_row, self._btn_del_row = self._ribbon_group(
+            self.table_toolbar, "Rows", [
+                ("⊕", "Add",    self._add_row_inline),
+                ("✎", "Edit",   self._edit_row_inline),
+                ("⊗", "Delete", self._delete_row_inline),
+            ],
+        )
+        self._ribbon_sep(self.table_toolbar)
+        self._btn_add_col, self._btn_del_col = self._ribbon_group(
+            self.table_toolbar, "Columns", [
+                ("⊕", "Add",    self._add_column),
+                ("⊗", "Delete", self._delete_column),
+            ],
+        )
+        self._ribbon_sep(self.table_toolbar)
+        self._ribbon_group(
+            self.table_toolbar, "Query",
+            [("≡", "SQL", self._open_query_wizard)],
+        )
 
         # Content area — swaps between schema list and inline data view
         self.schema_content = tk.Frame(self.schema_tab, bg="")
@@ -962,35 +1190,11 @@ class DBManagerApp(ctk.CTk):
         _dt_hsb = ttk.Scrollbar(self.table_data_frame, orient="horizontal", command=self.data_tree.xview)
         _dt_hsb.grid(row=1, column=0, sticky="ew")
         self.data_tree.configure(yscrollcommand=_dt_vsb.set, xscrollcommand=_dt_hsb.set)
-        self.data_tree.tag_configure("_odd",  background="#f0f0f0", foreground="#000000")
-        self.data_tree.tag_configure("_even", background="#ffffff", foreground="#000000")
+        self._reconfigure_tree_tags()
         self.data_tree.bind("<Double-Button-1>", self._on_cell_double_click)
-        self.data_tree.bind("<ButtonRelease-1>", lambda _: self.after(60, self._update_col_separators))
+        self.data_tree.bind("<ButtonRelease-1>", self._on_tree_mouse_release)
 
-        # Query Tab
-        self.query_tab = self.workspace_tabview.add("Query")
-        self.query_tab.grid_rowconfigure(1, weight=1)
-        self.query_tab.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(self.query_tab, text="SQL/Query Editor:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.query_editor = ctk.CTkTextbox(self.query_tab, height=150)
-        self.query_editor.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-
-        # Buttons for Query Tab
-        query_buttons_frame = ctk.CTkFrame(self.query_tab)
-        query_buttons_frame.grid(row=2, column=0, padx=5, pady=5, sticky="ew")
-        query_buttons_frame.grid_columnconfigure((0,1), weight=1)
-
-        self.execute_query_button = ctk.CTkButton(query_buttons_frame, text="Execute Query", command=self._execute_query)
-        self.execute_query_button.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-
-        self.clear_query_button = ctk.CTkButton(query_buttons_frame, text="Clear", command=self._clear_query_editor)
-        self.clear_query_button.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-        ctk.CTkLabel(self.query_tab, text="Results:").grid(row=3, column=0, padx=5, pady=5, sticky="w")
-        self.query_results = ctk.CTkTextbox(self.query_tab, wrap="word")
-        self.query_results.grid(row=4, column=0, padx=5, pady=5, sticky="nsew")
-        self.query_results.configure(state="disabled")
+        self._query_window = None  # singleton QueryWindow reference
 
         self._load_connection_buttons()
 
@@ -998,6 +1202,80 @@ class DBManagerApp(ctk.CTk):
         manage_win = ManageConnectionsWindow(self, self.connection_manager)
         manage_win.focus()
         manage_win.protocol("WM_DELETE_WINDOW", lambda: (self._load_connection_buttons(), manage_win.destroy()))
+
+    def _toggle_sidebar(self):
+        if self._sidebar_visible:
+            self.connection_frame.grid_remove()
+            self.grid_columnconfigure(0, weight=0, minsize=0)
+            self._sidebar_btn.configure(text="▶ Show Panel")
+            self._sidebar_visible = False
+        else:
+            self.connection_frame.grid()
+            self.grid_columnconfigure(0, weight=0)
+            self._sidebar_btn.configure(text="◀ Hide Panel")
+            self._sidebar_visible = True
+
+    def _apply_edit_mode(self):
+        self._edit_mode = bool(self._edit_mode_cb.get())
+        state = "normal" if self._edit_mode else "disabled"
+        for btn in [self._btn_edit_table, self._btn_add_table, self._btn_del_table,
+                    self._btn_add_row, self._btn_edit_row, self._btn_del_row,
+                    self._btn_add_col, self._btn_del_col]:
+            btn.configure(state=state)
+
+    # ── Ribbon helpers ────────────────────────────────────────────────────────
+
+    def _ribbon_group(self, ribbon, title, buttons):
+        """Add a labeled group of icon buttons to a ribbon toolbar.
+
+        buttons: list of (icon_char, short_label, command)
+        Returns list of CTkButton in order.
+        """
+        gf = ctk.CTkFrame(ribbon, fg_color="transparent")
+        gf.pack(side="left", fill="y")
+
+        # Group title + thin rule — claimed first so pack(side=bottom) reserves the space
+        ctk.CTkLabel(
+            gf, text=title,
+            font=ctk.CTkFont(size=9),
+            text_color=("gray45", "gray55"),
+        ).pack(side="bottom", pady=(0, 3))
+        ctk.CTkFrame(gf, height=1, fg_color=("gray75", "gray40")).pack(
+            side="bottom", fill="x", padx=6, pady=(0, 1))
+
+        # Button row
+        btn_row = ctk.CTkFrame(gf, fg_color="transparent")
+        btn_row.pack(side="top", fill="both", expand=True, padx=4, pady=(5, 2))
+
+        created = []
+        for col, (icon, lbl, cmd) in enumerate(buttons):
+            item = ctk.CTkFrame(btn_row, fg_color="transparent")
+            item.grid(row=0, column=col, padx=2)
+
+            btn = ctk.CTkButton(
+                item, text=icon, width=48, height=38,
+                font=ctk.CTkFont(size=19),
+                fg_color="transparent",
+                hover_color=("gray78", "gray28"),
+                text_color=("gray10", "gray90"),
+                corner_radius=6,
+                command=cmd,
+            )
+            btn.pack()
+            ctk.CTkLabel(
+                item, text=lbl,
+                font=ctk.CTkFont(size=9),
+                text_color=("gray35", "gray65"),
+            ).pack(pady=(1, 0))
+            created.append(btn)
+
+        return created
+
+    def _ribbon_sep(self, ribbon):
+        sep = tk.Frame(ribbon, width=1,
+                       bg="#666" if ctk.get_appearance_mode() == "Dark" else "#bbb")
+        sep.pack(side="left", fill="y", pady=8, padx=3)
+        sep.pack_propagate(False)
 
     def _load_connection_buttons(self):
         # Clear existing buttons
@@ -1011,32 +1289,81 @@ class DBManagerApp(ctk.CTk):
             conn_button.grid(row=i, column=0, padx=5, pady=5, sticky="ew")
 
     def _select_connection(self, connection_details):
-        # Disconnect from current active DB if any
-        if self.active_connector:
-            self.active_connector.disconnect()
+        conn_name = connection_details.get("name")
+
+        # Save workspace state for whichever connection is currently active
+        self._stop_auto_refresh()
+        if self.active_connector and self.selected_connection_details:
+            current_name = self.selected_connection_details.get("name")
+            self._connection_states[current_name] = {
+                "open_table":    self._open_table_name,
+                "is_collection": self._open_table_is_collection,
+                "schema":        self._last_schema,
+                "db_type":       self.selected_connection_details.get("db_type"),
+            }
+            self.active_connector.disconnect(silent=True)
             self.active_connector = None
 
         self.selected_connection_details = connection_details
-        self.last_connection_status = None # Reset status
+        self.last_connection_status = None
 
-        # Hide workspace tabview, show connection info frame
-        self.workspace_tabview.grid_remove()
-        self.connection_info_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5) # Ensure connection_info_frame is gridded
+        # Try to restore a previously saved workspace for this connection
+        saved = self._connection_states.get(conn_name)
+        if saved:
+            try:
+                connector = get_connector(connection_details)
+                if connector.connect(silent=True):
+                    self.active_connector = connector
+                    self._last_schema = saved.get("schema")
+                    self._is_mongodb = (connection_details.get("db_type") == "MongoDB")
 
-        # Clear previous info from the details display frame
+                    self.connection_info_frame.grid_remove()
+                    self.workspace_panel.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+
+                    # Restore schema list first
+                    self._show_schema_view()
+                    if self._last_schema:
+                        self._display_schema(self._last_schema, connection_details.get("db_type"))
+
+                    # Restore open table if one was open
+                    if saved.get("open_table"):
+                        self._open_table_inline(saved["open_table"], saved.get("is_collection", False))
+
+                    self._start_status_poller()
+                    self._start_auto_refresh()
+                    return
+            except Exception:
+                self.active_connector = None
+
+        # No saved state or reconnect failed — show connection info panel
+        self.workspace_panel.grid_remove()
+        self.connection_info_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
         for widget in self.connection_details_display_frame.winfo_children():
             widget.destroy()
-
-        # Display connection details
         self._display_selected_connection_info_labels(connection_details)
-
-        # Start status check loop
         if self.status_label:
             self.status_label.configure(text="Checking...", text_color=self.default_status_color)
         self._start_status_poller()
 
-        # Show connect button
-        self.connect_button.grid(row=100, column=0, padx=20, pady=20, sticky="s")
+    def _disconnect_db(self):
+        """Manually disconnect and return to the connection info panel, clearing saved state."""
+        self._stop_auto_refresh()
+        if self.active_connector:
+            self.active_connector.disconnect(silent=True)
+            self.active_connector = None
+        if self.selected_connection_details:
+            conn_name = self.selected_connection_details.get("name")
+            self._connection_states.pop(conn_name, None)
+        self._show_schema_view()
+        self.workspace_panel.grid_remove()
+        self.connection_info_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        for widget in self.connection_details_display_frame.winfo_children():
+            widget.destroy()
+        if self.selected_connection_details:
+            self._display_selected_connection_info_labels(self.selected_connection_details)
+        if self.status_label:
+            self.status_label.configure(text="Checking...", text_color=self.default_status_color)
+        self._start_status_poller()
 
     def _connect_selected_db(self):
         if not self.selected_connection_details:
@@ -1045,77 +1372,118 @@ class DBManagerApp(ctk.CTk):
         
         self._stop_status_poller()
 
-        connection_details = self.selected_connection_details
+        # Build effective connection details, overriding with whatever is in the entry fields
+        connection_details = dict(self.selected_connection_details)
+        if self._user_entry and self._user_entry.winfo_exists():
+            connection_details["user"] = self._user_entry.get().strip()
+        if self._pw_entry and self._pw_entry.winfo_exists():
+            connection_details["password"] = self._pw_entry.get()
 
         try:
             self.active_connector = get_connector(connection_details)
             if self.active_connector.connect():
+                # Persist credentials: always save username; save password only if checked
+                save_pw = bool(self._save_pw_var.get()) if self._save_pw_var else False
+                to_save = dict(self.selected_connection_details)
+                to_save["user"] = connection_details["user"]
+                to_save["password"] = connection_details["password"] if save_pw else ""
+                self.connection_manager.update_connection(to_save["name"], to_save)
+                self.selected_connection_details = to_save
+
                 self.connection_info_frame.grid_remove()
-                self.workspace_tabview.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-                self.workspace_tabview.set("Schema")
+                self.workspace_panel.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
                 self._show_schema_view()
 
                 schema = self.active_connector.fetch_schema()
                 if schema:
                     self._display_schema(schema, connection_details["db_type"])
 
+                self._start_auto_refresh()
+
             else:
-                # Stay on connection info frame, update status
-                # Clear previous info from the details display frame
-                for widget in self.connection_details_display_frame.winfo_children():
-                    widget.destroy()
-                # Re-display info and add error message
-                self._display_selected_connection_info_labels(connection_details) # Helper to re-display labels
-                ctk.CTkLabel(self.connection_details_display_frame, text=f"Failed to connect to {connection_details['name']}. Check credentials.", text_color="red").grid(row=row_idx+1, column=0, padx=20, pady=5, sticky="w")
+                CTkMessagebox(title="Connection Failed",
+                              message=f"Could not connect to '{connection_details['name']}'.\nCheck your credentials and try again.",
+                              icon="cancel", option_1="Ok")
                 self.active_connector = None
         except ValueError as e:
-            # Clear previous info from the details display frame
-            for widget in self.connection_details_display_frame.winfo_children():
-                widget.destroy()
-            # Re-display info and add error message
-            self._display_selected_connection_info_labels(connection_details) # Helper to re-display labels
-            ctk.CTkLabel(self.connection_details_display_frame, text=f"Connection Error: {e}", text_color="red").grid(row=row_idx+1, column=0, padx=20, pady=5, sticky="w")
+            CTkMessagebox(title="Connection Error", message=str(e), icon="cancel", option_1="Ok")
             self.active_connector = None
         except Exception as e:
-            # Clear previous info from the details display frame
-            for widget in self.connection_details_display_frame.winfo_children():
-                widget.destroy()
-            # Re-display info and add error message
-            self._display_selected_connection_info_labels(connection_details) # Helper to re-display labels
-            ctk.CTkLabel(self.connection_details_display_frame, text=f"An unexpected error occurred: {e}", text_color="red").grid(row=row_idx+1, column=0, padx=20, pady=5, sticky="w")
+            CTkMessagebox(title="Unexpected Error", message=str(e), icon="cancel", option_1="Ok")
             self.active_connector = None
 
     def _display_selected_connection_info_labels(self, connection_details):
-        # This helper function is called by _select_connection and _connect_selected_db
-        # to populate the connection_details_display_frame with labels.
-        row_idx = 0
-        ctk.CTkLabel(self.connection_details_display_frame, text=f"Connection: {connection_details.get('name')}", font=ctk.CTkFont(size=18, weight="bold")).grid(row=row_idx, column=0, padx=20, pady=10, sticky="w")
-        row_idx += 1
-        ctk.CTkLabel(self.connection_details_display_frame, text=f"Type: {connection_details.get('db_type')}").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w")
-        row_idx += 1
-        ctk.CTkLabel(self.connection_details_display_frame, text=f"Host: {connection_details.get('host')}").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w")
-        row_idx += 1
-        ctk.CTkLabel(self.connection_details_display_frame, text=f"Port: {connection_details.get('port')}").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w")
-        row_idx += 1
-        ctk.CTkLabel(self.connection_details_display_frame, text=f"User: {connection_details.get('user')}").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w")
-        row_idx += 1
-        ctk.CTkLabel(self.connection_details_display_frame, text=f"Database: {connection_details.get('database')}").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w")
-        row_idx += 1
-        
-        status_frame = ctk.CTkFrame(self.connection_details_display_frame, fg_color="transparent")
-        status_frame.grid(row=row_idx, column=0, padx=20, pady=2, sticky="w")
-        ctk.CTkLabel(status_frame, text="Online Status: ").pack(side="left")
-        self.status_label = ctk.CTkLabel(status_frame, text="Checking...")
-        self.status_label.pack(side="left")
-        self.default_status_color = self.status_label.cget("text_color")
-        row_idx += 1
+        parent = self.connection_details_display_frame
+        parent.grid_columnconfigure(0, weight=1)
+        parent.grid_columnconfigure(1, weight=1)
+        parent.grid_rowconfigure(0, weight=0)
+        parent.grid_rowconfigure(1, weight=0)
+        parent.grid_rowconfigure(2, weight=1)   # bottom spacer
 
-        ctk.CTkLabel(self.connection_details_display_frame, text=f"Size: N/A").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w") # Placeholder
-        row_idx += 1
-        ctk.CTkLabel(self.connection_details_display_frame, text=f"Last Connected: N/A").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w") # Placeholder
-        row_idx += 1
-        ctk.CTkLabel(self.connection_details_display_frame, text=f"First Connected: N/A").grid(row=row_idx, column=0, padx=20, pady=2, sticky="w") # Placeholder
-        row_idx += 1
+        # ── Connection name ──────────────────────────────────────────────
+        ctk.CTkLabel(
+            parent,
+            text=connection_details.get("name", ""),
+            font=ctk.CTkFont(size=22, weight="bold"),
+            anchor="w",
+        ).grid(row=0, column=0, columnspan=2, padx=24, pady=(24, 12), sticky="w")
+
+        # ── Info card ────────────────────────────────────────────────────
+        card = ctk.CTkFrame(parent, corner_radius=12)
+        card.grid(row=1, column=0, padx=(24, 10), pady=(0, 24), sticky="new")
+        card.grid_columnconfigure(1, weight=1)
+
+        card_fields = [
+            ("Type",   connection_details.get("db_type", "—")),
+            ("Host",   connection_details.get("host",    "—")),
+            ("Port",   str(connection_details.get("port", "—"))),
+            ("DB",     connection_details.get("database", "—")),
+            ("Status", None),
+            ("Size",   "—"),
+        ]
+        for i, (lbl, val) in enumerate(card_fields):
+            pt = 12 if i == 0 else 4
+            pb = 12 if i == len(card_fields) - 1 else 4
+            ctk.CTkLabel(card, text=lbl + ":", anchor="w",
+                         font=ctk.CTkFont(weight="bold")).grid(
+                row=i, column=0, padx=(14, 6), pady=(pt, pb), sticky="w")
+            if val is None:
+                self.status_label = ctk.CTkLabel(card, text="Checking…", anchor="w")
+                self.status_label.grid(row=i, column=1, padx=(0, 14), pady=(pt, pb), sticky="w")
+                self.default_status_color = self.status_label.cget("text_color")
+            else:
+                ctk.CTkLabel(card, text=val, anchor="w").grid(
+                    row=i, column=1, padx=(0, 14), pady=(pt, pb), sticky="w")
+
+        # ── Credentials panel ────────────────────────────────────────────
+        cred = ctk.CTkFrame(parent, fg_color="transparent")
+        cred.grid(row=1, column=1, padx=(10, 24), pady=(0, 24), sticky="new")
+        cred.grid_columnconfigure(0, weight=1)
+        cred.grid_columnconfigure(1, weight=0)
+
+        ctk.CTkLabel(cred, text="Username", anchor="w").grid(
+            row=0, column=0, columnspan=2, pady=(0, 3), sticky="w")
+        self._user_entry = ctk.CTkEntry(cred, placeholder_text="username")
+        self._user_entry.insert(0, connection_details.get("user", ""))
+        self._user_entry.grid(row=1, column=0, columnspan=2, pady=(0, 14), sticky="ew")
+
+        ctk.CTkLabel(cred, text="Password", anchor="w").grid(
+            row=2, column=0, columnspan=2, pady=(0, 3), sticky="w")
+        self._pw_entry = ctk.CTkEntry(cred, show="•", placeholder_text="password")
+        self._pw_entry.insert(0, connection_details.get("password", ""))
+        self._pw_entry.grid(row=3, column=0, columnspan=2, pady=(0, 14), sticky="ew")
+
+        has_saved_pw = bool(connection_details.get("password"))
+        self._save_pw_var = ctk.BooleanVar(value=has_saved_pw)
+        ctk.CTkCheckBox(cred, text="Save password", variable=self._save_pw_var).grid(
+            row=4, column=0, sticky="w")
+
+        self.connect_button = ctk.CTkButton(
+            cred, text="Connect", width=120, command=self._connect_selected_db)
+        self.connect_button.grid(row=4, column=1, padx=(10, 0), sticky="e")
+
+        self._user_entry.bind("<Return>", lambda _: self._connect_selected_db())
+        self._pw_entry.bind("<Return>",   lambda _: self._connect_selected_db())
 
     def _start_status_poller(self):
         self._stop_status_poller()
@@ -1164,13 +1532,37 @@ class DBManagerApp(ctk.CTk):
         if not self._status_stop_event.is_set():
             self.status_check_id = self.after(500, self._poll_status_queue)
 
-    def _refresh_schema(self):
+    def _refresh_schema(self, silent=False):
         if not self.active_connector:
-            CTkMessagebox(title="Warning", message="Not connected to any database.", icon="warning", option_1="Ok")
+            if not silent:
+                CTkMessagebox(title="Warning", message="Not connected to any database.", icon="warning", option_1="Ok")
             return
         schema = self.active_connector.fetch_schema()
         if schema:
             self._display_schema(schema, self.selected_connection_details["db_type"])
+
+    def _start_auto_refresh(self):
+        self._stop_auto_refresh()
+        self._auto_refresh_id = self.after(5000, self._auto_refresh)
+
+    def _stop_auto_refresh(self):
+        if self._auto_refresh_id is not None:
+            self.after_cancel(self._auto_refresh_id)
+            self._auto_refresh_id = None
+
+    def _auto_refresh(self):
+        if not self.active_connector:
+            return
+        try:
+            if self._open_table_name:
+                self._refresh_inline_table()
+            else:
+                schema = self.active_connector.fetch_schema()
+                if schema:
+                    self._display_schema(schema, self.selected_connection_details["db_type"])
+        except Exception:
+            pass
+        self._auto_refresh_id = self.after(5000, self._auto_refresh)
 
     def _display_schema(self, schema, db_type):
         self._is_mongodb = (db_type == "MongoDB")
@@ -1243,12 +1635,17 @@ class DBManagerApp(ctk.CTk):
         new_rows = result.get("rows", []) if result else []
         self._table_data_columns = new_cols
         self._table_data_rows = new_rows
+        self._table_col_defaults = self.active_connector.fetch_column_defaults(self._open_table_name)
+        pk_cols, _ = self.active_connector.fetch_primary_keys(self._open_table_name)
+        pk_set = set(pk_cols)
 
         self.data_tree.delete(*self.data_tree.get_children())
         self.data_tree.configure(columns=new_cols if new_cols else [], show="headings")
         for col in new_cols:
-            self.data_tree.heading(col, text=col)
-            self.data_tree.column(col, width=120, minwidth=60)
+            label = f"🔑 {col}" if col in pk_set else col
+            self.data_tree.heading(col, text=label)
+            saved_w = self._col_widths.get((self._open_table_name, col), 120)
+            self.data_tree.column(col, width=saved_w, minwidth=40)
         for row in new_rows:
             self.data_tree.insert("", "end", values=row)
         self._apply_row_colors()
@@ -1256,12 +1653,20 @@ class DBManagerApp(ctk.CTk):
         self.data_tree.update_idletasks()
 
     def _toggle_gridlines(self):
-        self._gridlines_on = not self._gridlines_on
-        self._btn_gridlines.configure(text="Grid: On" if self._gridlines_on else "Grid: Off")
+        self._gridlines_on = bool(self._grid_cb.get())
         self._apply_row_colors()
         self._update_col_separators()
 
+    def _reconfigure_tree_tags(self):
+        if ctk.get_appearance_mode() == "Dark":
+            self.data_tree.tag_configure("_odd",  background="#2a2a2a", foreground="#e0e0e0")
+            self.data_tree.tag_configure("_even", background="#1e1e1e", foreground="#e0e0e0")
+        else:
+            self.data_tree.tag_configure("_odd",  background="#f0f0f0", foreground="#000000")
+            self.data_tree.tag_configure("_even", background="#ffffff", foreground="#000000")
+
     def _apply_row_colors(self):
+        self._reconfigure_tree_tags()
         for i, iid in enumerate(self.data_tree.get_children()):
             if self._gridlines_on:
                 self.data_tree.item(iid, tags=("_odd" if i % 2 else "_even",))
@@ -1287,11 +1692,58 @@ class DBManagerApp(ctk.CTk):
                 x += self.data_tree.column(col, "width")
             except Exception:
                 continue
-            sep = tk.Frame(self.table_data_frame, width=1, bg="#c0c0c0")
+            sep_color = "#555555" if ctk.get_appearance_mode() == "Dark" else "#c0c0c0"
+            sep = tk.Frame(self.table_data_frame, width=1, bg=sep_color)
             sep.place(x=x, y=0, width=1, relheight=1)
             self._col_sep_frames.append(sep)
 
+    def _on_tree_mouse_release(self, _event):
+        def _update():
+            self._save_col_widths()
+            self._update_col_separators()
+        self.after(60, _update)
+
+    def _save_col_widths(self):
+        if not self._open_table_name or not self._table_data_columns:
+            return
+        for col in self._table_data_columns:
+            try:
+                w = self.data_tree.column(col, "width")
+                self._col_widths[(self._open_table_name, col)] = w
+            except Exception:
+                pass
+
+    def _autofit_column(self, event):
+        col_id = self.data_tree.identify_column(event.x)
+        if not col_id or col_id == "#0":
+            return
+        col_idx = int(col_id[1:]) - 1
+        if col_idx < 0 or col_idx >= len(self._table_data_columns):
+            return
+        col_name = self._table_data_columns[col_idx]
+        try:
+            f = tkfont.nametofont("TkDefaultFont")
+        except Exception:
+            f = tkfont.Font()
+        header = self.data_tree.heading(col_name, "text")
+        candidates = [header] + [
+            str(self.data_tree.set(iid, col_name))
+            for iid in self.data_tree.get_children()
+        ]
+        max_w = max(f.measure(v) for v in candidates) + 24
+        max_w = max(max_w, 40)
+        self.data_tree.column(col_name, width=max_w)
+        self._col_widths[(self._open_table_name, col_name)] = max_w
+        self._update_col_separators()
+
     def _on_cell_double_click(self, event):
+        region = self.data_tree.identify_region(event.x, event.y)
+        if region == "separator":
+            self._autofit_column(event)
+            return
+        if region == "heading":
+            return
+
         item = self.data_tree.identify_row(event.y)
         col  = self.data_tree.identify_column(event.x)
         if not item or col == "#0":
@@ -1367,8 +1819,20 @@ class DBManagerApp(ctk.CTk):
         if not self._table_data_columns:
             CTkMessagebox(title="Warning", message="No columns found. Refresh the table first.", icon="warning", option_1="Ok")
             return
+        auto_fill = {}
+        for col in self._table_data_columns:
+            d = self._table_col_defaults.get(col, {})
+            col_default = d.get("default") or ""
+            if d.get("is_identity", False):
+                auto_fill[col] = None           # IDENTITY — exclude from INSERT, hide field
+            elif col_default:
+                # Let PostgreSQL evaluate its own (possibly normalized) DEFAULT expression
+                val = self.active_connector.evaluate_expression(col_default)
+                if val:
+                    auto_fill[col] = val
         AddEditDataWindow(self, self.active_connector, self._open_table_name,
-                          self._open_table_is_collection, self._table_data_columns, mode="add")
+                          self._open_table_is_collection, self._table_data_columns,
+                          mode="add", auto_fill=auto_fill)
 
     def _edit_row_inline(self):
         values, row_data = self._get_selected_data_row()
@@ -1451,58 +1915,12 @@ class DBManagerApp(ctk.CTk):
 
     # ─────────────────────────────────────────────────────────────────────────
 
-    def _execute_query(self):
-        if not self.active_connector:
-            self.query_results.configure(state="normal")
-            self.query_results.delete("1.0", "end")
-            self.query_results.insert("end", "Error: Not connected to any database.")
-            self.query_results.configure(state="disabled")
+    def _open_query_wizard(self):
+        if self._query_window and self._query_window.winfo_exists():
+            self._query_window.lift()
+            self._query_window.focus_force()
             return
-
-        query = self.query_editor.get("1.0", "end").strip()
-        if not query:
-            self.query_results.configure(state="normal")
-            self.query_results.delete("1.0", "end")
-            self.query_results.insert("end", "Error: Query cannot be empty.")
-            self.query_results.configure(state="disabled")
-            return
-
-        self.query_results.configure(state="normal")
-        self.query_results.delete("1.0", "end")
-        self.query_results.insert("end", "Executing query...\n")
-        self.query_results.configure(state="disabled")
-        self.workspace_tabview.set("Query") # Switch to query tab
-
-        success, result = self.active_connector.execute_query(query)
-
-        self.query_results.configure(state="normal")
-        self.query_results.delete("1.0", "end")
-        if success:
-            if isinstance(result, dict) and "rows" in result and "columns" in result:
-                # Format tabular results
-                columns = result["columns"]
-                rows = result["rows"]
-                
-                header = " | ".join(columns)
-                self.query_results.insert("end", header + "\n")
-                self.query_results.insert("end", "-" * len(header) + "\n")
-                for row in rows:
-                    self.query_results.insert("end", " | ".join(map(str, row)) + "\n")
-            elif isinstance(result, dict) and "message" in result:
-                self.query_results.insert("end", result["message"] + "\n")
-            else:
-                self.query_results.insert("end", str(result) + "\n")
-
-            # Automatically refresh schema if the query might have changed it.
-            query_upper = query.upper()
-            if any(keyword in query_upper for keyword in ["CREATE", "ALTER", "DROP", "RENAME", "TRUNCATE"]):
-                self._refresh_schema()
-        else:
-            self.query_results.insert("end", f"Error: {result}\n")
-        self.query_results.configure(state="disabled")
-
-    def _clear_query_editor(self):
-        self.query_editor.delete("1.0", "end")
+        self._query_window = QueryWindow(self)
 
 
 if __name__ == "__main__":

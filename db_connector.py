@@ -50,6 +50,9 @@ class DBConnector:
     def fetch_column_defaults(self, table_name):
         return {}
 
+    def evaluate_expression(self, expr: str) -> str:
+        return ""
+
 class PostgreSQLConnector(DBConnector):
     def connect(self, silent=False):
         try:
@@ -108,7 +111,7 @@ class PostgreSQLConnector(DBConnector):
         if not self.connection:
             return False, "Not connected."
         try:
-            self.cursor.execute(f"SELECT * FROM {table_name};")
+            self.cursor.execute(f'SELECT * FROM "{table_name}";')
             columns = [desc[0] for desc in self.cursor.description]
             rows = self.cursor.fetchall()
             return True, {"columns": columns, "rows": rows}
@@ -231,6 +234,18 @@ class PostgreSQLConnector(DBConnector):
         except Exception as e:
             self.connection.rollback()
             return {}
+
+    def evaluate_expression(self, expr: str) -> str:
+        """Run SELECT (expr) and return the result as a string — used to generate sample values."""
+        if not self.connection or not expr:
+            return ""
+        try:
+            self.cursor.execute(f"SELECT ({expr})")
+            row = self.cursor.fetchone()
+            return str(row[0]) if row and row[0] is not None else ""
+        except Exception:
+            self.connection.rollback()
+            return ""
 
 
 class MongoDBConnector(DBConnector):
@@ -442,7 +457,7 @@ class MySQLMariaDBConnector(DBConnector):
         if not self.connection:
             return False, "Not connected."
         try:
-            self.cursor.execute(f"SELECT * FROM {table_name};")
+            self.cursor.execute(f"SELECT * FROM `{table_name}`;")
             columns = [desc[0] for desc in self.cursor.description]
             rows = self.cursor.fetchall()
             return True, {"columns": columns, "rows": rows}
