@@ -93,7 +93,6 @@ Automate repetitive maintenance tasks (e.g., rename columns, purge old tables, g
                 </ul>
             </td>
         </tr>
-        <tr><td></td><td></td></tr>
     </table>
 </center>
 
@@ -231,7 +230,6 @@ basecrawler run scripts/example.py
         <tr>
             <td>BASECRAWLER_DB_TYPE</td><td>One of postgresql, mysql, sqlite, mongodb, cassandra, dynamodb.</td>
         </tr>
-        <tr><td></td><td></td></tr>
     </table>
 </center>
 
@@ -269,7 +267,6 @@ logging:
         <tr>
             <td>--Plugin [path]</td><td>Load a custom plugin from any directory (e.g., to add support for a new DB driver).</td>
         </tr>
-        <tr><td></td><td></td></tr>
     </table>
 </center>
 
@@ -306,7 +303,6 @@ basecrawler export --format json --force > all_tables.json
         <tr>
             <td>Connect</td><td>Establish a connection before discovery (optional for. CLI mode).</td>
         </tr>
-        <tr><td></td><td></td></tr>
     </table>
 </center>
 
@@ -366,7 +362,6 @@ Black formatter – Apply with black ..
             <td>Initial Release | stabilization and documantation overhaul</td>
             <td>Coming Soon</td>
         </tr>
-        <tr><td><td></td></td><td></td><tr>
     </table>
 </center>
 
