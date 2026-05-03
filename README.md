@@ -381,12 +381,12 @@ Black formatter — apply with `black .`
             <td>Version</td><td>Description</td><td>Release Date</td>
         </tr>
         <tr>
-            <td>V1.0.0</td>
+            <td>v1.0.0</td>
             <td>Initial Release | stabilization and documentation overhaul</td>
             <td>Coming Soon</td>
         </tr>
         <tr>
-            <td>0.7.51-alpha</td>
+            <td>v0.7.51-alpha</td>
             <td>pre release alpha version | In active development</td>
             <td>2026-05-03</td>
         </tr>

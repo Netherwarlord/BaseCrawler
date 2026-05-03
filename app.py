@@ -388,21 +388,42 @@ class AddTableDialog(ctk.CTkToplevel):
                 len_label.grid_remove()
                 len_entry.grid_remove()
 
-        ctk.CTkCheckBox(row2, text="PK",     variable=pk_var,     width=55).grid(row=0, column=0, padx=(0, 4))
+        def on_pk_toggle():
+            if pk_var.get():
+                for other in self._col_rows:
+                    if other["pk_var"] is not pk_var:
+                        other["pk_cb"].grid_remove()
+            else:
+                for other in self._col_rows:
+                    if other["pk_var"] is not pk_var:
+                        other["pk_cb"].grid()
+
+        pk_cb = ctk.CTkCheckBox(row2, text="PK", variable=pk_var, width=55, command=on_pk_toggle)
+        pk_cb.grid(row=0, column=0, padx=(0, 4))
         ctk.CTkCheckBox(row2, text="Auto",   variable=auto_var,   width=65).grid(row=0, column=1, padx=(0, 4))
         ctk.CTkCheckBox(row2, text="Rand",   variable=rand_var,   width=65, command=on_rand_toggle).grid(row=0, column=2)
         ctk.CTkCheckBox(row2, text="Unique", variable=unique_var, width=75).grid(row=0, column=5, padx=(10, 0))
 
         entry = {"name_entry": name_entry, "type_var": type_var,
-                 "pk_var": pk_var, "auto_var": auto_var, "rand_var": rand_var,
+                 "pk_var": pk_var, "pk_cb": pk_cb,
+                 "auto_var": auto_var, "rand_var": rand_var,
                  "max_entry": len_entry, "unique_var": unique_var, "frame": outer}
 
         def do_remove(e=entry, f=outer):
+            was_pk = e["pk_var"].get()
             self._col_rows[:] = [x for x in self._col_rows if x is not e]
             f.destroy()
+            if was_pk:
+                for other in self._col_rows:
+                    if other["pk_cb"].winfo_exists():
+                        other["pk_cb"].grid()
 
         ctk.CTkButton(row1, text="×", width=28, command=do_remove).grid(row=0, column=2)
         self._col_rows.append(entry)
+
+        # If another row already owns PK, hide this new row's PK checkbox
+        if any(e["pk_var"].get() for e in self._col_rows if e is not entry):
+            pk_cb.grid_remove()
 
     def _create_table(self):
         table_name = self.name_entry.get().strip()
@@ -698,7 +719,18 @@ class EditTableDialog(ctk.CTkToplevel):
                 len_label.grid_remove()
                 len_entry.grid_remove()
 
-        ctk.CTkCheckBox(row2, text="PK",     variable=pk_var,     width=55).grid(row=0, column=0, padx=(0, 4))
+        def on_pk_toggle():
+            if pk_var.get():
+                for other in self._col_rows:
+                    if other["pk_var"] is not pk_var:
+                        other["pk_cb"].grid_remove()
+            else:
+                for other in self._col_rows:
+                    if other["pk_var"] is not pk_var:
+                        other["pk_cb"].grid()
+
+        pk_cb = ctk.CTkCheckBox(row2, text="PK", variable=pk_var, width=55, command=on_pk_toggle)
+        pk_cb.grid(row=0, column=0, padx=(0, 4))
         ctk.CTkCheckBox(row2, text="Auto",   variable=auto_var,   width=65).grid(row=0, column=1, padx=(0, 4))
         ctk.CTkCheckBox(row2, text="Rand",   variable=rand_var,   width=65, command=on_rand_toggle).grid(row=0, column=2)
         ctk.CTkCheckBox(row2, text="Unique", variable=unique_var, width=75).grid(row=0, column=5, padx=(10, 0))
@@ -710,15 +742,23 @@ class EditTableDialog(ctk.CTkToplevel):
 
         entry = {"orig_name": name or None, "orig_type": col_type or None,
                  "name_entry": name_entry, "type_var": type_var,
-                 "pk_var": pk_var, "auto_var": auto_var, "rand_var": rand_var,
+                 "pk_var": pk_var, "pk_cb": pk_cb,
+                 "auto_var": auto_var, "rand_var": rand_var,
                  "max_entry": len_entry, "unique_var": unique_var, "frame": outer}
 
         def remove(e=entry, f=outer):
+            was_pk = e["pk_var"].get()
             self._col_rows[:] = [x for x in self._col_rows if x is not e]
             f.destroy()
+            if was_pk:
+                for other in self._col_rows:
+                    if other["pk_cb"].winfo_exists():
+                        other["pk_cb"].grid()
 
         ctk.CTkButton(row1, text="×", width=28, command=remove).grid(row=0, column=2)
         self._col_rows.append(entry)
+        if any(e["pk_var"].get() for e in self._col_rows if e is not entry):
+            pk_cb.grid_remove()
 
     def _apply(self):
         current_originals = {e["orig_name"] for e in self._col_rows if e["orig_name"] is not None}

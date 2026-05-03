@@ -83,7 +83,12 @@ class PostgreSQLConnector(DBConnector):
             tables = [row[0] for row in self.cursor.fetchall()]
             schema = {"tables": {}}
             for table in tables:
-                self.cursor.execute(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table}';")
+                self.cursor.execute(
+                    "SELECT column_name, data_type FROM information_schema.columns "
+                    "WHERE table_name = %s AND table_schema = 'public' "
+                    "ORDER BY ordinal_position;",
+                    (table,)
+                )
                 columns = [{"name": col[0], "type": col[1]} for col in self.cursor.fetchall()]
                 schema["tables"][table] = {"columns": columns}
             return schema
