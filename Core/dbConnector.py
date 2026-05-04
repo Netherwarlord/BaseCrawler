@@ -1,14 +1,15 @@
 import psycopg2
 from pymongo import MongoClient
-from bson.objectid import ObjectId # Added for MongoDB
+from bson.objectid import ObjectId
 import mysql.connector
 import datetime
+
 
 class DBConnector:
     def __init__(self, connection_details):
         self.connection_details = connection_details
         self.connection = None
-        self.cursor = None # For SQL databases
+        self.cursor = None
 
     def connect(self, silent=False):
         raise NotImplementedError
@@ -53,6 +54,7 @@ class DBConnector:
     def evaluate_expression(self, expr: str) -> str:
         return ""
 
+
 class PostgreSQLConnector(DBConnector):
     def connect(self, silent=False):
         try:
@@ -61,7 +63,7 @@ class PostgreSQLConnector(DBConnector):
                 port=self.connection_details.get("port"),
                 user=self.connection_details.get("user"),
                 password=self.connection_details.get("password"),
-                database=self.connection_details.get("database")
+                database=self.connection_details.get("database"),
             )
             self.cursor = self.connection.cursor()
             if not silent:
@@ -101,22 +103,38 @@ class PostgreSQLConnector(DBConnector):
             return False, "Not connected to database."
         try:
             self.cursor.execute(query)
-            if self.cursor.description: # It's a SELECT query
+            if self.cursor.description:
                 columns = [desc[0] for desc in self.cursor.description]
                 results = self.cursor.fetchall()
                 return True, {"columns": columns, "rows": results}
-            else: # It's an INSERT, UPDATE, DELETE, or DDL query
+            else:
                 self.connection.commit()
                 return True, {"message": f"Query executed successfully. Rows affected: {self.cursor.rowcount}"}
         except Exception as e:
-            self.connection.rollback() # Rollback on error for transactional databases
+            self.connection.rollback()
             return False, str(e)
 
     def fetch_data(self, table_name):
         if not self.connection:
             return False, "Not connected."
         try:
-            self.cursor.execute(f'SELECT * FROM "{table_name}";')
+            self.cursor.execute("""
+                SELECT kcu.column_name
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                  ON tc.constraint_name = kcu.constraint_name
+                  AND tc.table_schema = kcu.table_schema
+                WHERE tc.table_name = %s
+                  AND tc.constraint_type = 'PRIMARY KEY'
+                  AND tc.table_schema = 'public'
+                ORDER BY kcu.ordinal_position
+                LIMIT 1;
+            """, (table_name,))
+            pk_row = self.cursor.fetchone()
+            if pk_row:
+                self.cursor.execute(f'SELECT * FROM "{table_name}" ORDER BY "{pk_row[0]}" ASC;')
+            else:
+                self.cursor.execute(f'SELECT * FROM "{table_name}";')
             columns = [desc[0] for desc in self.cursor.description]
             rows = self.cursor.fetchall()
             return True, {"columns": columns, "rows": rows}
@@ -143,15 +161,10 @@ class PostgreSQLConnector(DBConnector):
         if not self.connection:
             return False, "Not connected."
         try:
-            set_clauses = [f'"{col}" = %s' for col in data.keys()]
-            set_clause_str = ', '.join(set_clauses)
-
-            where_clauses = [f'"{col}" = %s' for col in condition.keys()]
-            where_clause_str = ' AND '.join(where_clauses)
-
+            set_clause_str   = ', '.join(f'"{col}" = %s' for col in data.keys())
+            where_clause_str = ' AND '.join(f'"{col}" = %s' for col in condition.keys())
             query = f'UPDATE "{table_name}" SET {set_clause_str} WHERE {where_clause_str};'
-            params = list(data.values()) + list(condition.values())
-            self.cursor.execute(query, params)
+            self.cursor.execute(query, list(data.values()) + list(condition.values()))
             self.connection.commit()
             print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Updated {self.cursor.rowcount} rows in {table_name}."
@@ -163,12 +176,9 @@ class PostgreSQLConnector(DBConnector):
         if not self.connection:
             return False, "Not connected."
         try:
-            where_clauses = [f'"{col}" = %s' for col in condition.keys()]
-            where_clause_str = ' AND '.join(where_clauses)
-
+            where_clause_str = ' AND '.join(f'"{col}" = %s' for col in condition.keys())
             query = f'DELETE FROM "{table_name}" WHERE {where_clause_str};'
-            params = list(condition.values())
-            self.cursor.execute(query, params)
+            self.cursor.execute(query, list(condition.values()))
             self.connection.commit()
             print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Deleted {self.cursor.rowcount} rows from {table_name}."
@@ -193,8 +203,7 @@ class PostgreSQLConnector(DBConnector):
             """, (table_name,))
             rows = self.cursor.fetchall()
             cols = [r[0] for r in rows]
-            constraint_name = rows[0][1] if rows else None
-            return cols, constraint_name
+            return cols, rows[0][1] if rows else None
         except Exception as e:
             self.connection.rollback()
             return [], None
@@ -219,7 +228,6 @@ class PostgreSQLConnector(DBConnector):
             return {}
 
     def fetch_column_defaults(self, table_name):
-        """Returns {col_name: {"default": str|None, "is_identity": bool}} for each column."""
         if not self.connection:
             return {}
         try:
@@ -241,7 +249,6 @@ class PostgreSQLConnector(DBConnector):
             return {}
 
     def evaluate_expression(self, expr: str) -> str:
-        """Run SELECT (expr) and return the result as a string — used to generate sample values."""
         if not self.connection or not expr:
             return ""
         try:
@@ -256,12 +263,10 @@ class PostgreSQLConnector(DBConnector):
 class MongoDBConnector(DBConnector):
     def connect(self, silent=False):
         try:
-            # MongoDB connection string can be complex, simplifying for now
-            # For production, consider more robust URI construction and authentication
-            user = self.connection_details.get('user')
+            user     = self.connection_details.get('user')
             password = self.connection_details.get('password')
-            host = self.connection_details.get('host')
-            port = self.connection_details.get('port')
+            host     = self.connection_details.get('host')
+            port     = self.connection_details.get('port')
             database = self.connection_details.get('database')
 
             if user and password:
@@ -270,9 +275,8 @@ class MongoDBConnector(DBConnector):
                 uri = f"mongodb://{host}:{port}/"
 
             self.connection = MongoClient(uri, serverSelectionTimeoutMS=5000)
-            self.db = self.connection[database] # Select the database
-            # The ping command is cheap and does not require auth.
-            self.connection.admin.command('ping') 
+            self.db = self.connection[database]
+            self.connection.admin.command('ping')
             if not silent:
                 print(f"Connected to MongoDB: {self.connection_details.get('name')}")
             return True
@@ -293,12 +297,8 @@ class MongoDBConnector(DBConnector):
         if not self.db:
             return None
         try:
-            collections = self.db.list_collection_names()
             schema = {"collections": {}}
-            for col_name in collections:
-                # For MongoDB, schema is dynamic. We can sample documents.
-                # For simplicity, we'll just list collection names for now.
-                # A more advanced implementation would sample documents to infer schema.
+            for col_name in self.db.list_collection_names():
                 schema["collections"][col_name] = {"fields": "dynamic (sample to infer)"}
             return schema
         except Exception as e:
@@ -309,36 +309,19 @@ class MongoDBConnector(DBConnector):
         if not self.db:
             return False, "Not connected to database."
         try:
-            # For MongoDB, a "query" can be a Python dictionary representing a find operation,
-            # or a command to be executed. This is a simplified approach.
-            # A more robust solution would parse the query string or provide specific UI for operations.
-            # For now, let's assume 'query' is a collection name for a find operation.
-            # Or a simple command like db.collection.find({})
-            
-            # Example: query = "my_collection.find({})"
             parts = query.split('.')
             if len(parts) >= 2 and parts[1].startswith('find'):
                 collection_name = parts[0]
-                # This is a very basic parsing. Needs improvement for real-world use.
-                # For now, assume find({}) means all documents.
                 results = list(self.db[collection_name].find({}))
                 if results:
-                    # Extract keys from the first document to use as columns
                     all_keys = set()
                     for doc in results:
                         all_keys.update(doc.keys())
-                    columns = sorted(list(all_keys), key=lambda x: (x != '_id', x)) # _id first
-
-                    # Convert ObjectId to string for display
+                    columns = sorted(list(all_keys), key=lambda x: (x != '_id', x))
                     rows = []
                     for doc in results:
-                        row = []
-                        for col in columns:
-                            val = doc.get(col)
-                            if isinstance(val, ObjectId):
-                                row.append(str(val))
-                            else:
-                                row.append(val)
+                        row = [str(doc.get(col)) if isinstance(doc.get(col), ObjectId) else doc.get(col)
+                               for col in columns]
                         rows.append(row)
                     return True, {"columns": columns, "rows": rows}
                 else:
@@ -352,23 +335,16 @@ class MongoDBConnector(DBConnector):
         if not self.db:
             return False, "Not connected."
         try:
-            results = list(self.db[collection_name].find({}))
+            results = list(self.db[collection_name].find({}).sort("_id", 1))
             if results:
-                # Extract all unique keys from all documents to form columns
                 all_keys = set()
                 for doc in results:
                     all_keys.update(doc.keys())
-                columns = sorted(list(all_keys), key=lambda x: (x != '_id', x)) # _id first
-
+                columns = sorted(list(all_keys), key=lambda x: (x != '_id', x))
                 rows = []
                 for doc in results:
-                    row = []
-                    for col in columns:
-                        val = doc.get(col)
-                        if isinstance(val, ObjectId):
-                            row.append(str(val))
-                        else:
-                            row.append(val)
+                    row = [str(doc.get(col)) if isinstance(doc.get(col), ObjectId) else doc.get(col)
+                           for col in columns]
                     rows.append(row)
                 return True, {"columns": columns, "rows": rows}
             else:
@@ -415,7 +391,7 @@ class MySQLMariaDBConnector(DBConnector):
                 port=self.connection_details.get("port"),
                 user=self.connection_details.get("user"),
                 password=self.connection_details.get("password"),
-                database=self.connection_details.get("database")
+                database=self.connection_details.get("database"),
             )
             self.cursor = self.connection.cursor()
             if not silent:
@@ -447,22 +423,33 @@ class MySQLMariaDBConnector(DBConnector):
             return False, "Not connected to database."
         try:
             self.cursor.execute(query)
-            if self.cursor.description: # It's a SELECT query
+            if self.cursor.description:
                 columns = [desc[0] for desc in self.cursor.description]
                 results = self.cursor.fetchall()
                 return True, {"columns": columns, "rows": results}
-            else: # It's an INSERT, UPDATE, DELETE, or DDL query
+            else:
                 self.connection.commit()
                 return True, {"message": f"Query executed successfully. Rows affected: {self.cursor.rowcount}"}
         except Exception as e:
-            self.connection.rollback() # Rollback on error for transactional databases
+            self.connection.rollback()
             return False, str(e)
 
     def fetch_data(self, table_name):
         if not self.connection:
             return False, "Not connected."
         try:
-            self.cursor.execute(f"SELECT * FROM `{table_name}`;")
+            self.cursor.execute("""
+                SELECT COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE
+                WHERE TABLE_NAME = %s AND CONSTRAINT_NAME = 'PRIMARY'
+                  AND TABLE_SCHEMA = DATABASE()
+                ORDER BY ORDINAL_POSITION
+                LIMIT 1;
+            """, (table_name,))
+            pk_row = self.cursor.fetchone()
+            if pk_row:
+                self.cursor.execute(f"SELECT * FROM `{table_name}` ORDER BY `{pk_row[0]}` ASC;")
+            else:
+                self.cursor.execute(f"SELECT * FROM `{table_name}`;")
             columns = [desc[0] for desc in self.cursor.description]
             rows = self.cursor.fetchall()
             return True, {"columns": columns, "rows": rows}
@@ -489,15 +476,10 @@ class MySQLMariaDBConnector(DBConnector):
         if not self.connection:
             return False, "Not connected."
         try:
-            set_clauses = [f'`{col}` = %s' for col in data.keys()]
-            set_clause_str = ', '.join(set_clauses)
-
-            where_clauses = [f'`{col}` = %s' for col in condition.keys()]
-            where_clause_str = ' AND '.join(where_clauses)
-
+            set_clause_str   = ', '.join(f'`{col}` = %s' for col in data.keys())
+            where_clause_str = ' AND '.join(f'`{col}` = %s' for col in condition.keys())
             query = f"UPDATE `{table_name}` SET {set_clause_str} WHERE {where_clause_str};"
-            params = list(data.values()) + list(condition.values())
-            self.cursor.execute(query, params)
+            self.cursor.execute(query, list(data.values()) + list(condition.values()))
             self.connection.commit()
             print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Updated {self.cursor.rowcount} rows in {table_name}."
@@ -509,12 +491,9 @@ class MySQLMariaDBConnector(DBConnector):
         if not self.connection:
             return False, "Not connected."
         try:
-            where_clauses = [f'`{col}` = %s' for col in condition.keys()]
-            where_clause_str = ' AND '.join(where_clauses)
-
+            where_clause_str = ' AND '.join(f'`{col}` = %s' for col in condition.keys())
             query = f"DELETE FROM `{table_name}` WHERE {where_clause_str};"
-            params = list(condition.values())
-            self.cursor.execute(query, params)
+            self.cursor.execute(query, list(condition.values()))
             self.connection.commit()
             print(f"Table '{table_name}' in '{self.connection_details.get('name')}' edited at {datetime.datetime.now()}")
             return True, f"Deleted {self.cursor.rowcount} rows from {table_name}."
@@ -561,7 +540,7 @@ def get_connector(connection_details):
         return PostgreSQLConnector(connection_details)
     elif db_type == "MongoDB":
         return MongoDBConnector(connection_details)
-    elif db_type == "MariaDB" or db_type == "MySQL": # MariaDB uses MySQL connector
+    elif db_type in ("MariaDB", "MySQL"):
         return MySQLMariaDBConnector(connection_details)
     else:
         raise ValueError(f"Unsupported database type: {db_type}")

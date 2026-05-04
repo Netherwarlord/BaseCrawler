@@ -382,12 +382,49 @@ Black formatter — apply with `black .`
         </tr>
         <tr>
             <td>v1.0.0</td>
-            <td>Initial Release | stabilization and documentation overhaul</td>
+            <td>
+                Initial Release
+                <ul>
+                    <li>Full database support for: PostgreSQL, Oracle DB, MySQL, MariaDB, MongoDB and MSDB</li>
+                    <li>Full-Feature toolbar for manipulating databases.</li>
+                    <li>Support for custom modules and databse connecotrs.</li>
+                    <li>Modern UI and design language.</li>
+                    <li>Improved performance and reliability.</li>
+                    <li>Native support for secrets management, parameterized query enforcement, and identity-bound auditing to satisfy SOC 2 and PCI DSS requirements out of the box.</li>
+                </ul>
+            </td>
             <td>Coming Soon</td>
         </tr>
         <tr>
+            <td>v0.8.3-alpha</td>
+            <td>
+                Major Overhaul
+                <ul>
+                    <li>Separated main app.py file into smaller modules.</li>
+                    <li>Made performance improvements on load times.</li>
+                    <li>Added persistent state saving across restarts.</li>
+                    <li>Added double-click to edit cuntionality in active tables.</li>
+                    <li>Modularized Wizard design for later implementation.</li>
+                </ul>
+            </td>
+            <td>2026-05-03</td>
+        </tr>
+        <tr>
             <td>v0.7.51-alpha</td>
-            <td>pre release alpha version | In active development</td>
+            <td>
+                Initial Pre-Release Alpha
+                <ul>
+                    <li>First alpha version fit for public testing stages.</li>
+                    <li>Stabilized Thread Leak issue.</li>
+                    <li>Created single window functionality.</li>
+                    <li>Added toolbar to table viewer/editor.</li>
+                    <li>Moved Query editor into its own window/wizard.</li>
+                    <li>Finalized PostgreSQL connector.</li>
+                    <li>Finalized MongoDB connecotr.</li>
+                    <li>Finalized MariaDB connector.</li>
+                    <li>Finalized MySQL connector.</li>
+                </ul>
+            </td>
             <td>2026-05-03</td>
         </tr>
     </table>

@@ -1,5 +1,7 @@
-connections.json
+EBC Backend/
 __pycache__
 .DS_Store
 /Testing-DBs
 CLAUDE.md
+.claude/
+.gitea/

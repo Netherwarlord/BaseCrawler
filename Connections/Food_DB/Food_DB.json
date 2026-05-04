@@ -1,0 +1,10 @@
+{
+    "name": "Food_DB",
+    "db_type": "PostgreSQL",
+    "host": "localhost",
+    "port": "5432",
+    "user": "InfernalAdmin",
+    "password": "InfernalAdminPassword",
+    "database": "food_inventory",
+    "order": 1
+}

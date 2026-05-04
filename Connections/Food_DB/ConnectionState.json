@@ -1,0 +1,5 @@
+{
+    "open_table": "pantry_items",
+    "is_collection": false,
+    "db_type": "PostgreSQL"
+}
