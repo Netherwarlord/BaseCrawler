@@ -400,7 +400,7 @@ Black formatter — apply with `black .`
             <td>
                 Minor Stability Fixes
             </td>
-            <td>2026-05-03</td>
+            <td>2026-05-04</td>
         </tr>
         <tr>
             <td>v0.8.3-alpha</td>
