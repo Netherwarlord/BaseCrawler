@@ -1,0 +1,1 @@
+[📂 (open table)] [➕(new table) | ✏️ (edit table) | 🗑️ (delete table) | 🪄 (Table Wizard)] [📝 (Query Editor) | 🪄 (Query Wizard)] [⏻ (disconnect)]

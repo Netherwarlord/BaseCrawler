@@ -89,7 +89,7 @@ class DBManagerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("BaseCrawler v0.8.3-alpha")
+        self.title("BaseCrawler v0.8.4-alpha")
         self.geometry("1000x700")
 
         self.connection_manager = ConnectionManager()
@@ -158,7 +158,7 @@ class DBManagerApp(ctk.CTk):
 
         # Top bar
         self._sidebar_visible = True
-        self._edit_mode = True
+        self._edit_mode = False
         topbar = ctk.CTkFrame(self.workspace_frame, height=36, fg_color="transparent")
         topbar.grid(row=0, column=0, sticky="ew", padx=4, pady=(4, 0))
         topbar.grid_columnconfigure(1, weight=1)
@@ -169,11 +169,13 @@ class DBManagerApp(ctk.CTk):
 
         self._grid_cb = ctk.CTkCheckBox(topbar, text="⊞", width=50, command=self._toggle_gridlines)
         self._grid_cb.select()
-        self._grid_cb.grid(row=0, column=2, padx=(0, 4))
+        # Start hidden; show only when a table is open
+        # self._grid_cb.grid(row=0, column=2, padx=(0, 4))
 
         self._edit_mode_cb = ctk.CTkCheckBox(topbar, text="✏", width=50, command=self._apply_edit_mode)
-        self._edit_mode_cb.select()
-        self._edit_mode_cb.grid(row=0, column=3, padx=(0, 8))
+        self._edit_mode_cb.deselect()
+        # Start hidden; show only when a table is open
+        # self._edit_mode_cb.grid(row=0, column=3, padx=(0, 8))
 
         # Connection info frame
         self.connection_info_frame = ctk.CTkFrame(self.workspace_frame, fg_color="transparent")
@@ -205,16 +207,20 @@ class DBManagerApp(ctk.CTk):
         self.schema_toolbar.pack_propagate(False)
 
         [self._btn_open_table] = self._ribbon_group(
-            self.schema_toolbar, "View", [("▶", "Open", self._open_selected_table)])
+            self.schema_toolbar, "View", [("📂", "Open", self._open_selected_table)])
         self._ribbon_sep(self.schema_toolbar)
-        self._btn_edit_table, self._btn_add_table, self._btn_del_table = self._ribbon_group(
+        self._btn_add_table, self._btn_edit_table, self._btn_del_table, self._btn_table_wizard = self._ribbon_group(
             self.schema_toolbar, "Tables", [
-                ("✎", "Edit",   self._edit_selected_table),
-                ("⊕", "Add",    self._add_table),
-                ("⊗", "Delete", self._delete_selected_table),
+                ("➕", "New",    self._add_table),
+                ("✏️", "Edit",   self._edit_selected_table),
+                ("🗑️", "Delete", self._delete_selected_table),
+                ("🪄", "Wizard", self._add_table),
             ])
         self._ribbon_sep(self.schema_toolbar)
-        self._ribbon_group(self.schema_toolbar, "Query", [("🔍", "SQL", self._open_query_wizard)])
+        self._ribbon_group(self.schema_toolbar, "Query", [
+            ("📝", "Editor", self._open_query_wizard),
+            ("🪄", "Wizard", self._open_query_wizard),
+        ])
         self._ribbon_sep(self.schema_toolbar)
         [disc_btn] = self._ribbon_group(
             self.schema_toolbar, "Connection", [("⏻", "Disconnect", self._disconnect_db)])
@@ -228,16 +234,16 @@ class DBManagerApp(ctk.CTk):
         self._ribbon_sep(self.table_toolbar)
         self._btn_add_row, self._btn_edit_row, self._btn_del_row = self._ribbon_group(
             self.table_toolbar, "Rows", [
-                ("⊕", "Add",    self._add_row_inline),
-                ("✎", "Edit",   self._edit_row_inline),
-                ("⊗", "Delete", self._delete_row_inline),
+                ("➕", "Add",    self._add_row_inline),
+                ("✏️", "Edit",   self._edit_row_inline),
+                ("🗑️", "Delete", self._delete_row_inline),
             ])
         self._ribbon_sep(self.table_toolbar)
         self._btn_add_col, self._btn_edit_col, self._btn_del_col = self._ribbon_group(
             self.table_toolbar, "Columns", [
-                ("⊕", "Add",    self._add_column),
-                ("✎", "Edit",   self._edit_column),
-                ("⊗", "Delete", self._delete_column),
+                ("➕", "Add",    self._add_column),
+                ("✏️", "Edit",   self._edit_column),
+                ("🗑️", "Delete", self._delete_column),
             ])
         self._ribbon_sep(self.table_toolbar)
         self._ribbon_group(self.table_toolbar, "Query", [("🔍", "SQL", self._open_query_wizard)])
@@ -299,8 +305,16 @@ class DBManagerApp(ctk.CTk):
 
     def _apply_edit_mode(self):
         self._edit_mode = bool(self._edit_mode_cb.get())
+        # If edit mode was just disabled, destroy any active inline cell editor
+        if not self._edit_mode:
+            try:
+                if self._cell_editor and self._cell_editor.winfo_exists():
+                    self._cell_editor.destroy()
+                    self._cell_editor = None
+            except Exception:
+                pass
         state = "normal" if self._edit_mode else "disabled"
-        for btn in [self._btn_edit_table, self._btn_add_table, self._btn_del_table,
+        for btn in [self._btn_edit_table, self._btn_add_table, self._btn_del_table, self._btn_table_wizard,
                     self._btn_add_row, self._btn_edit_row, self._btn_del_row,
                     self._btn_add_col, self._btn_edit_col, self._btn_del_col]:
             btn.configure(state=state)
@@ -320,9 +334,17 @@ class DBManagerApp(ctk.CTk):
         btn_row.pack(side="top", fill="both", expand=True, padx=4, pady=(5, 2))
 
         created = []
-        for col, (icon, lbl, cmd) in enumerate(buttons):
+        num_buttons = len(buttons)
+        for col_idx, (icon, lbl, cmd) in enumerate(buttons):
             item = ctk.CTkFrame(btn_row, fg_color="transparent")
-            item.grid(row=0, column=col, padx=2)
+            # Center single-button groups by using side filler columns
+            if num_buttons == 1:
+                # create left and right flexible columns and place the button in the middle
+                btn_row.grid_columnconfigure(0, weight=1)
+                btn_row.grid_columnconfigure(2, weight=1)
+                item.grid(row=0, column=1, padx=2)
+            else:
+                item.grid(row=0, column=col_idx, padx=2)
             btn = ctk.CTkButton(item, text=icon, width=48, height=38,
                                 font=ctk.CTkFont(size=19), fg_color="transparent",
                                 hover_color=("gray78", "gray28"), text_color=("gray10", "gray90"),
@@ -688,6 +710,12 @@ class DBManagerApp(ctk.CTk):
         self._clear_col_separators()
         self.table_toolbar.grid_remove()
         self.table_data_frame.grid_remove()
+        # Hide table-only topbar controls when not viewing table data
+        try:
+            self._grid_cb.grid_remove()
+            self._edit_mode_cb.grid_remove()
+        except Exception:
+            pass
         self.schema_toolbar.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 0))
         self.schema_list_frame.grid(row=0, column=0, sticky="nsew")
         self._open_table_name = None
@@ -701,6 +729,14 @@ class DBManagerApp(ctk.CTk):
         self.schema_list_frame.grid_remove()
         self.table_toolbar.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 0))
         self.table_data_frame.grid(row=0, column=0, sticky="nsew")
+        # Show table-only topbar controls when viewing table data
+        try:
+            self._grid_cb.grid(row=0, column=2, padx=(0, 4))
+            self._edit_mode_cb.grid(row=0, column=3, padx=(0, 8))
+        except Exception:
+            pass
+        # Ensure ribbon buttons reflect current edit mode (disabled by default)
+        self._apply_edit_mode()
         self.update_idletasks()
         self._trigger_fetch()
 
@@ -880,6 +916,10 @@ class DBManagerApp(ctk.CTk):
             self._autofit_column(event)
             return
         if region == "heading":
+            return
+
+        # Do not open cell editor unless edit mode is enabled
+        if not self._edit_mode:
             return
 
         item = self.data_tree.identify_row(event.y)

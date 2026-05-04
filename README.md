@@ -242,7 +242,7 @@ Visible when browsing the table list. Groups and their icon buttons:
             <td>View</td><td>▶ Open — open the selected table inline</td>
         </tr>
         <tr>
-            <td>Tables</td><td>✎ Edit · ⊕ Add · ⊗ Delete</td>
+            <td>Tables</td><td>✏️ Edit · ➕ Add · 🗑️ Delete</td>
         </tr>
         <tr>
             <td>Query</td><td>≡ SQL — open the Query Wizard window</td>
@@ -266,10 +266,10 @@ Visible when a table is open inline. Groups and their icon buttons:
             <td>Navigate</td><td>◀ Back — return to the table list</td>
         </tr>
         <tr>
-            <td>Rows</td><td>⊕ Add · ✎ Edit · ⊗ Delete</td>
+            <td>Rows</td><td>➕ Add · ✏️ Edit · 🗑️ Delete</td>
         </tr>
         <tr>
-            <td>Columns</td><td>⊕ Add · ⊗ Delete</td>
+            <td>Columns</td><td>➕ Add · 🗑️ Delete</td>
         </tr>
         <tr>
             <td>Query</td><td>≡ SQL — open the Query Wizard window</td>
@@ -394,6 +394,13 @@ Black formatter — apply with `black .`
                 </ul>
             </td>
             <td>Coming Soon</td>
+        </tr>
+        <tr>
+            <td>v0.8.4-alpha</td>
+            <td>
+                Minor Stability Fixes
+            </td>
+            <td>2026-05-03</td>
         </tr>
         <tr>
             <td>v0.8.3-alpha</td>
