@@ -315,11 +315,11 @@ BaseCrawler is three Python files with no web server or external process:
             <td>File</td><td>Responsibility</td>
         </tr>
         <tr>
-            <td><code>connection_manager.py</code></td>
+            <td>connection_manager.py</td>
             <td>Pure data layer. Reads/writes <code>connections.json</code>. No UI dependency. Key methods: <code>add_connection</code>, <code>remove_connection</code>, <code>update_connection</code>, <code>reorder_connection</code>.</td>
         </tr>
         <tr>
-            <td><code>db_connector.py</code></td>
+            <td>db_connector.py</td>
             <td>
                 One <code>DBConnector</code> base class, three concrete implementations:
                 <code>PostgreSQLConnector</code> (psycopg2),
@@ -330,7 +330,7 @@ BaseCrawler is three Python files with no web server or external process:
             </td>
         </tr>
         <tr>
-            <td><code>app.py</code></td>
+            <td>app.py</td>
             <td>
                 All UI. Key classes:
                 <code>DBManagerApp</code> (main window),
